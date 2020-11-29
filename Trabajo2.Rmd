@@ -1,7 +1,6 @@
 ---
 title: "TAE - Accidentalidad en Medellín - Reporte Técnico"
-author: Jaime Andres Molina Correa <br> Valentina García Velasquez <br> Felipe Villarreal
-  Piedrahita <br> Ricardo Penaloza Velasquez <br> Daniel Chanci Restrepo
+author: "Jaime Andres Molina Correa <br> Valentina García Velasquez <br> Felipe Villarreal Piedrahita <br> Ricardo Penaloza Velasquez <br> Daniel Chanci Restrepo"
 output:
   html_document:
     theme: cosmo
@@ -9,27 +8,163 @@ output:
     css: format.css
     df_print: paged
     code_download: yes
-    toc: yes
-    number_sections: yes
+    toc: true
+    number_sections: true
     toc_float:
-      collapsed: no
-      smooth_scroll: yes
-  pdf_document:
-    toc: yes
+      collapsed: false
+      smooth_scroll: TRUE
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+options(Encoding="UTF-8")
+ 
+library("ggplot2")                     # Load ggplot2 package
+library("GGally")                      # Load GGally package
+if(!require(pacman)){install.packages("pacman"); library(pacman)}
+pacman::p_load("tidyverse", "knitr", "leaps")
+source("functions.R", local = knitr::knit_global())
+knitr::opts_chunk$set(echo = TRUE, comment = NA, tidy.opts = list(width.cutoff = 60), tidy = T)
 ```
 #### <span>Universidad Nacional de Colombia sede Medellín</span> {.place}
 
 #### Resumen {.letra}
 En este trabajo se abarcan los ejercicios aplicados del texto guía "An Introduction to Statistical Learning with Applications in R" de la materia técnicas de aprendizaje estadístico impartida en la Universidad Nacional de Colombia sede Medellín.
 
-# <span class="titulo_capitulo">Capítulo 4.7</span> {#cap4_7}
+# <span class="titulo_capitulo ">Capítulo 4.7 (Classification)</span> {#cap4_7}
 
 
 ## <span class="titulo_ejercicio">Ejercicio 10</span> {.letra}
 
+<span class="negrilla subrayar">This question should be anwsered using the <span class="naranja">Weekly</span> data set, which is part of the <span class="naranja">ISLR</span> package. This data is similar in nature to the <span class="naranja">Smarket</span> data from this chapter’s lab, except that it contains 1, 089 weekly returns for 21 years, from the beginning of 1990 to the end of 2010. </span> 
+
+```{r, warning=FALSE, message=FALSE}
+library(corrplot)
+library(psych)
+library(MASS)
+library(class)
+library(Hmisc)
+library(PerformanceAnalytics)
+library(ggplot2)
+library(vcd)
+library(GGally)
+```
+### <span class="negrilla">(a)</span> {.letra}
+<span class="negrilla">Produce some numerical and graphical summaries of the <span class="naranja">Weekly</span> data. Do there appear to be any patterns?</span>
+
+```{r, warning=FALSE, message=FALSE}
+library(ISLR)
+data(Weekly)
+attach(Weekly)
+rbind(head(Weekly,10))
+summary(Weekly)
+#glimpse(Weekly)
+#Se crea la matriz de correlacion
+Weekly.corr <- round(cor(Weekly[,-9]),2)
+
+Weekly2 <- subset( Weekly, select = -Direction )
+pairs(Weekly2, lower.panel = myPanel.cor, upper.panel = panel.smooth, diag.panel = myPanel.box, labels = names(Weekly2))
+#ggpairs(Weekly2) 
 
 
+```
+
+Gracias a la gráfica anterior, podemos comprobar que la única gran correlación se da entre las variables año y volúmen. En realidad, ninguna de las demás varaibles logra tener una correlación mayor o igual al 10%.
+
+### <span class="negrilla">(b)</span> {.letra}
+<span class="negrilla">Use the full data set to perform a logistic regression with <span class="naranja">Direction</span> as the response and the five lag variables plus <span class="naranja">Volume</span> as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?</span>
+```{r}
+logist.fit = glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = Weekly, family = binomial)
+summary(logist.fit)
+```
+
+Debido a lo anterior, Lag2 es la única vairable que tiene un alto valor de significancia, ya que su valor p (0.0296) es menor a 0.05 y su β2 = 0.05844. Este valor es positivo, entonces muestra que si el valor fue positivo en el mercado hace 2 semanas, es más probable que lo sea en el día actual.
+
+
+### <span class="negrilla">(c)</span> {.letra}
+<span class="negrilla">Compute the confusion matrix and overall fraction of correct predictions. Explain what the confusion matrix is telling you about the types of mistakes made by logistic regression.</span>
+
+```{r}
+logist.probab <- predict(logist.fit, type = "response")
+logist.test <- rep("Down", length(logist.probab))
+logist.test[logist.probab > 0.5] = "Up"
+matriz.confusion <- table(logist.test, Direction)
+matriz.confusion
+mosaic(matriz.confusion, shade = T, colorize = T, 
+       gp = gpar(fill = matrix(c("yellow", "red", "red", "yellow"), 2, 2)))
+```
+
+Los calculos anteriores mostraron que la precisión de predicciones correctas es del 56.1% ((54 + 557) / (54 + 557 + 48 + 430)). También se logra evidenciar la gran diferencia que se da las semanas en las que el mercado sube y baja (cuando baja, la precisión es solo de 54 / (430 + 54) = 11.2%, mientras que cuando el mercado sube 557 / (557 + 48) = 92.1%).
+
+
+### <span class="negrilla">(d)</span> {.letra}
+<span class="negrilla">Now fit the logistic regression model using a training data period from 1990 to 2008, with <span class="naranja">Lag2</span> as the only predictor. Compute the confusion matrix and the overall fraction of correct predictions for the held out data (that is, the data from 2009 and 2010).</span>
+
+```{r}
+data.train = (Year < 2009)
+data.0910 = Weekly[!data.train, ]
+
+logist.fit = glm(Direction ~ Lag2, data = Weekly, family = binomial, subset = data.train)
+
+logist.probab = predict(logist.fit, data.0910, type = "response")
+logist.test = rep("Down", length(logist.probab))
+logist.test[logist.probab > 0.5] = "Up"
+
+Direction.0910 = Direction[!data.train]
+table(logist.test, Direction.0910)
+```
+
+```{r, echo=FALSE}
+paste("PORCENTAJE DE PREDICCIONES CORRECTAS =", mean(logist.test == Direction.0910)*100, "%")
+```
+
+Luego de ajustar el modelo con los datos en el intervalo de tiempo dado y con la variable solicitada, se llegó a un 62.5% de predicciones correctas, lo que ocasiona un <span class="negrilla">test error rate</span> de 37.5%. En este mismo orden de ideas, se obtiene que el procetaje de observaciones correctas para las semanas con un valor en alza es de 91,8% (56/(56+5)) mientras que las semanas con un valor de mercado a la baja es de 20,93% (9/(9+34)).
+
+### <span class="negrilla">(e)</span> {.letra}
+<span class="negrilla">Repeat (d) using LDA.</span>
+
+```{r}
+lda.fit = lda(Direction ~ Lag2, data = Weekly, subset = data.train)
+lda.test = predict(lda.fit, data.0910)
+table(lda.test$class, Direction.0910)
+```
+
+```{r, echo=FALSE}
+paste("PORCENTAJE DE PREDICCIONES CORRECTAS =", mean(lda.test$class == Direction.0910)*100, "%")
+```
+
+### <span class="negrilla">(f)</span> {.letra}
+<span class="negrilla">Repeat (d) using QDA.</span>
+
+```{r}
+qda.fit = qda(Direction ~ Lag2, data = Weekly, subset = data.train)
+qda.test = predict(qda.fit, data.0910)
+table(qda.test$class, Direction.0910)
+```
+
+```{r, echo=FALSE}
+paste("PORCENTAJE DE PREDICCIONES CORRECTAS =", round(mean(qda.test$class == Direction.0910)*100,1), "%")
+```
+
+### <span class="negrilla">(g)</span> {.letra}
+<span class="negrilla">Repeat (d) using KNN with K = 1.</span>
+
+```{r}
+train.X = as.matrix(Lag2[data.train])
+test.X = as.matrix(Lag2[!data.train])
+train.Direction = Direction[data.train]
+set.seed(1)
+knn.pred = knn(train.X, test.X, train.Direction, k = 1)
+table(knn.pred, Direction.0910)
+```
+
+```{r, echo=FALSE}
+paste("PORCENTAJE DE PREDICCIONES CORRECTAS =", round(mean(knn.pred == Direction.0910)*100,1), "%")
+```
+
+
+### <span class="negrilla">(h)</span> {.letra}
+<span class="negrilla">Which of these methods appears to provide the best results on this data?</span>
+
+
+Aparentemente, los métodos de Regresion Logistica (62.5%) y LDA (62.5%) tienen la mayor precisión con igual resultado, en contraste con QDA (58.7%) y KNN (50%).
