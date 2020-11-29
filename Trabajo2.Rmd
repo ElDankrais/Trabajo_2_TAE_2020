@@ -327,3 +327,89 @@ paste("Error con KNN (K=100) =", round((1 - prop.correct)*100,1), "%")
 ```
 
 K=5 fue el valor con el menor error e todos, equivalente a 8.6%. 
+
+
+## <span class="titulo_ejercicio">Ejercicio 12</span> {.letra}
+
+<span class="negrilla subrayar">This problem involves writing functions.</span>
+
+### <span class="negrilla">(a)</span> {.letra}
+<span class="negrilla">Write a function, <span class="naranja">Power()</span>, that prints out the result of raising 2 to the 3rd power. In other words, your function should compute 2^3 and print out the results.</span>
+*Hint: Recall that x^a raises x to the power a. Use the print() function to output the result.*
+
+```{r, warning=FALSE, message=FALSE}
+Power = function() { 2^3 }
+print(Power())
+```
+
+### <span class="negrilla">(b)</span> {.letra}
+
+<span class="negrilla">Create a new function, <span class="naranja">Power2()</span>, that allows you to pass any two numbers, x and a, and prints out the value of <span class="naranja">x^a</span>. You can do this by beginning your function with the line </span>
+
+<span class="naranja"> > Power2=function (x,a){ </span>
+
+<span class="negrilla">You should be able to call your function by entering, for instance, </span>
+
+<span class="naranja"> > Power2 (3,8) </span>
+
+<span class="negrilla">on the command line. This should output the value of 3^8, namely, 6, 561. </span>
+
+```{r, warning=FALSE, message=FALSE}
+Power2 = function(x, a) { x^a }
+Power2(3, 8)
+```
+
+### <span class="negrilla">(c)</span> {.letra}
+<span class="negrilla">Using the <span class="naranja">Power2()</span> function that you just wrote, compute 10^3, 8^17, and 131^3.</span> 
+
+```{r, warning=FALSE, message=FALSE}
+Power2(10, 3)
+```
+
+```{r, warning=FALSE, message=FALSE}
+Power2(8, 17)
+```
+
+```{r, warning=FALSE, message=FALSE}
+Power2(131, 3)
+```
+
+
+### <span class="negrilla">(d)</span> {.letra}
+<span class="negrilla">Now create a new function, <span class="naranja">Power3()</span>, that actually returns the result <span class="naranja">x^a</span>  as an R object, rather than simply printing it to the screen. That is, if you store the value <span class="naranja">x^a</span>  in an object called result within your function, then you can simply <span class="naranja">return()</span>  this <span class="naranja">return()</span>  result, using the following line:</span>
+
+<span class="naranja">return (result)</span>
+
+<span class="negrilla">The line above should be the last line in your function, before the <span class="naranja">}</span> symbol.</span>
+
+```{r, warning=FALSE, message=FALSE}
+Power3 = function(x, a) {
+    result = x^a
+    return(result)
+    }
+```
+
+
+### <span class="negrilla">(e)</span> {.letra}
+<span class="negrilla">Now using the Power3() function, create a plot of <span class="naranja">f(x) = x^2</span>. The x-axis should display a range of integers from 1 to 10, and the y-axis should display <span class="naranja">x^2</span>. Label the axes appropriately, and use an appropriate title for the figure. Consider displaying either the x-axis, the y-axis, or both on the log-scale. You can do this by using <span class="naranja">log=‘‘x’’, log=‘‘y’’, or log=‘‘xy’’</span> as arguments to the <span class="naranja">plot()</span> function.</span>
+
+```{r, warning=FALSE, message=FALSE}
+x = 1:10
+plot(x, Power3(x, 2), log = "xy", ylab = "Log(y) = x^2", xlab = "Log(x)", 
+    main = "Log(x) vs Log(x^2)")
+```
+
+
+### <span class="negrilla">(f)</span> {.letra}
+<span class="negrilla">Create a function, <span class="naranja">PlotPower()</span>, that allows you to create a plot of x against x^a for a fixed a and for a range of values of x. For instance, if you call.</span>
+
+<span class="naranja"> > PlotPower (1:10 ,3)</span>
+
+<span class="negrilla">then a plot should be created with an x-axis taking on values 1, 2, . . . , 10, and a y-axis taking on values 13, 23, . . . , 103.</span>
+
+```{r, warning=FALSE, message=FALSE}
+PlotPower = function(x, a) {
+    plot(x, Power3(x, a), ylab = "X^a")
+}
+PlotPower(1:10, 3)
+```
