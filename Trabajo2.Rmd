@@ -169,7 +169,76 @@ paste("PORCENTAJE DE PREDICCIONES CORRECTAS =", round(mean(knn.pred == Direction
 
 Aparentemente, los métodos de Regresion Logistica (62.5%) y LDA (62.5%) tienen la mayor precisión con igual resultado, en contraste con QDA (58.7%) y KNN (50%).
 
---------------------------------------------
+### <span class="negrilla">(i)</span> {.letra}
+<span class="negrilla">Experiment with different combinations of predictors, including possible transformations and interactions, for each of the methods. Report the variables, method, and associated confusion matrix that appears to provide the best results on the held out data. Note that you should also experiment with values for K in the KNN classifier.</span>
+
+
+<span class="azul_cielo negrilla"> * LDA - Lag1 & Lag2: </span>
+
+```{r}
+lda.fit = lda(Direction ~ Lag2 + Lag1, data = Weekly, subset = data.train)
+lda.test = predict(lda.fit, data.0910)
+```
+
+```{r, echo=FALSE}
+paste("Precisión =", round(mean(lda.test$class == Direction.0910)*100,3), "%")
+```
+
+
+<span class="azul_cielo negrilla"> * LDA Interacción - Lag1 & Lag2: </span>
+
+```{r}
+lda.fit = lda(Direction ~ Lag2:Lag1, data = Weekly, subset = data.train)
+lda.test = predict(lda.fit, data.0910)
+```
+
+```{r, echo=FALSE}
+paste("Precisión =", round(mean(lda.test$class == Direction.0910)*100,3), "%")
+```
+
+
+<span class="azul_cielo negrilla"> * QDA - Lag2 & sqrt(Lag2): </span>
+
+```{r}
+qda.fit = qda(Direction ~ Lag2 + sqrt(abs(Lag2)), data = Weekly, subset = data.train)
+qda.test = predict(qda.fit, data.0910)$class
+```
+
+```{r, echo=FALSE}
+paste("Precisión =", round(mean(qda.test == Direction.0910)*100,3), "%")
+```
+
+
+<span class="azul_cielo negrilla"> * QDA - [Lag2 & sqrt(Lag2)] & [Lag1 & sqrt(Lag1)]: </span>
+
+```{r}
+qda.fit = qda(Direction ~ Lag2 + sqrt(abs(Lag2)) + Lag1 + sqrt(abs(Lag1)), data = Weekly, subset = data.train)
+qda.test = predict(qda.fit, data.0910)$class
+```
+
+```{r, echo=FALSE}
+paste("Precisión =", round(mean(qda.test == Direction.0910)*100,3), "%")
+```
+
+
+<span class="azul_cielo negrilla"> * Regresión logística - Lag1 & Lag2: </span>
+
+```{r}
+logist.fit = glm(Direction ~ Lag1 + Lag2, data = Weekly, family = binomial, subset = data.train)
+logist.probab = predict(logist.fit, data.0910, type = "response")
+logist.test = rep("Down", length(logist.probab))
+logist.test[logist.probab > 0.5] = "Up"
+Direction.0910 = Direction[!data.train]
+```
+
+```{r, echo=FALSE}
+paste("Precisión =", round(mean(logist.test == Direction.0910)*100,3), "%")
+```
+
+
+Para este numeral se utilzaron las viarbles Lag1(-0.041) y Lag2(0.058) ya que son las que tiene un peso mayor en la regresión logistica hecha con anterioridad.
+
+Después de utilizar diferentes combinaciones, se observa que la precisión es muy similar, de hecho, de los métodos utilizaron, el que fue más efectivo fue el de [Lag2 & sqrt(Lag2)] & [Lag1 & sqrt(Lag1)] mientras todos los demás se mantuvieron igual.
 
 
 ## <span class="titulo_ejercicio">Ejercicio 11</span> {.letra}
