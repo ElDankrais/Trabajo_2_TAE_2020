@@ -50,27 +50,29 @@ library(GGally)
 ### <span class="negrilla">(a)</span> {.letra}
 <span class="negrilla">Produce some numerical and graphical summaries of the <span class="naranja">Weekly</span> data. Do there appear to be any patterns?</span>
 
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE, fig.height=8, fig.width=8.5}
 library(ISLR)
 data(Weekly)
 attach(Weekly)
 rbind(head(Weekly,10))
 summary(Weekly)
-#glimpse(Weekly)
-#Se crea la matriz de correlacion
-Weekly.corr <- round(cor(Weekly[,-9]),2)
-
-Weekly2 <- subset( Weekly, select = -Direction )
-pairs(Weekly2, lower.panel = myPanel.cor, upper.panel = panel.smooth, diag.panel = myPanel.box, labels = names(Weekly2))
-#ggpairs(Weekly2) 
-
-
+ggpairs(Weekly, aes(colour = Direction, alpha = 0.5),
+        upper = list(continuous = wrap('cor', size = 2.4)),
+title = "Matriz de dispersión") +
+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
-Gracias a la gráfica anterior, podemos comprobar que la única gran correlación se da entre las variables año y volúmen. En realidad, ninguna de las demás varaibles logra tener una correlación mayor o igual al 10%.
+Los valores en rojo corresponden al nivel *Down* de la variable categórica **Direction** y los valores azules al nivel *Up*. Esto es útil cuando se quiere observar su ambas poblaciones tienen el mismo comportamiento estando juntas y estando separadas.
+
+Podemos comprobar que la única gran correlación se da entre las variables año y volumen. Además, su relación no es lineal ya que se aprecia una curva. También se observa que ninguna combinación de las demás variables logra tener una correlación mayor o igual al 10% combinando los datos de la población *Down* y la población *Up*.
+
+Se observa que todos los rezagos se concentran en el valor de cero gracias a la densidad que nos enseña el gráfico. Además, la variable **today** separa muy bien las poblaciones *Down* y *Up*. También se nota que no hay muchas diferencias entre ambas poblaciones respecto a variables diferentes a **today**.
+
+
 
 ### <span class="negrilla">(b)</span> {.letra}
 <span class="negrilla">Use the full data set to perform a logistic regression with <span class="naranja">Direction</span> as the response and the five lag variables plus <span class="naranja">Volume</span> as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?</span>
+
 ```{r}
 logist.fit = glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = Weekly, family = binomial)
 summary(logist.fit)
@@ -171,7 +173,7 @@ Aparentemente, los métodos de Regresion Logistica (62.5%) y LDA (62.5%) tienen 
 <span class="negrilla">Experiment with different combinations of predictors, including possible transformations and interactions, for each of the methods. Report the variables, method, and associated confusion matrix that appears to provide the best results on the held out data. Note that you should also experiment with values for K in the KNN classifier.</span>
 
 
-<span class="azul_cielo negrilla"> * LDA - Lag1 & Lag2: </span>
+<span class="negrilla"> * LDA - Lag1 & Lag2: </span>
 
 ```{r}
 lda.fit = lda(Direction ~ Lag2 + Lag1, data = Weekly, subset = data.train)
@@ -183,7 +185,7 @@ paste("Precisión =", round(mean(lda.test$class == Direction.0910)*100,3), "%")
 ```
 
 
-<span class="azul_cielo negrilla"> * LDA Interacción - Lag1 & Lag2: </span>
+<span class="negrilla"> * LDA Interacción - Lag1 & Lag2: </span>
 
 ```{r}
 lda.fit = lda(Direction ~ Lag2:Lag1, data = Weekly, subset = data.train)
@@ -195,7 +197,7 @@ paste("Precisión =", round(mean(lda.test$class == Direction.0910)*100,3), "%")
 ```
 
 
-<span class="azul_cielo negrilla"> * QDA - Lag2 & sqrt(Lag2): </span>
+<span class="negrilla"> * QDA - Lag2 & sqrt(Lag2): </span>
 
 ```{r}
 qda.fit = qda(Direction ~ Lag2 + sqrt(abs(Lag2)), data = Weekly, subset = data.train)
@@ -207,7 +209,7 @@ paste("Precisión =", round(mean(qda.test == Direction.0910)*100,3), "%")
 ```
 
 
-<span class="azul_cielo negrilla"> * QDA - [Lag2 & sqrt(Lag2)] & [Lag1 & sqrt(Lag1)]: </span>
+<span class="negrilla"> * QDA - [Lag2 & sqrt(Lag2)] & [Lag1 & sqrt(Lag1)]: </span>
 
 ```{r}
 qda.fit = qda(Direction ~ Lag2 + sqrt(abs(Lag2)) + Lag1 + sqrt(abs(Lag1)), data = Weekly, subset = data.train)
@@ -219,7 +221,7 @@ paste("Precisión =", round(mean(qda.test == Direction.0910)*100,3), "%")
 ```
 
 
-<span class="azul_cielo negrilla"> * Regresión logística - Lag1 & Lag2: </span>
+<span class="negrilla"> * Regresión logística - Lag1 & Lag2: </span>
 
 ```{r}
 logist.fit = glm(Direction ~ Lag1 + Lag2, data = Weekly, family = binomial, subset = data.train)
@@ -481,6 +483,181 @@ PlotPower = function(x, a) {
 PlotPower(1:10, 3)
 
 ```
+
+
+## <span class="titulo_ejercicio">Ejercicio 13</span> {.letra}
+
+<span class="negrilla subrayar">Using the Boston data set, fit classification models in order to predict whether a given suburb has a crime rate above or below the median. Explore logistic regression, LDA, and KNN models using various subsets of the predictors. Describe your findings.</span>
+
+```{r, warning=FALSE, message=FALSE}
+library(ISLR)
+library(corrplot)
+library(psych)
+library(MASS)
+library(class)
+library(Hmisc)
+library(PerformanceAnalytics)
+library(ggplot2)
+library(vcd)
+library(GGally)
+library(caret)
+```
+
+```{r, warning=FALSE, message=FALSE}
+attach(Boston)
+
+summary(Boston)
+
+str(Boston)
+
+crimen.class = rep(0, length(crim))
+crimen.class[crim > median(crim)] = 1
+Boston = data.frame(Boston, crimen.class)
+
+pairs(Boston, lower.panel = myPanel.cor, upper.panel = panel.smooth, diag.panel = myPanel.box, labels = names(Boston))
+
+corrplot.mixed(cor(Boston), order="hclust", tl.col="black")
+```
+
+```{r, warning=FALSE}
+set.seed(23)
+train <- createDataPartition(y = Boston$crimen.class, p = 0.7, list = FALSE, times = 1)
+Boston.train = Boston[train,]
+Boston.test = Boston[-train,]
+crimen.class.test = crimen.class[-train]
+```
+
+<span class="negrilla"> * Regresión Logística: </span>
+
+```{r, warning=FALSE}
+#REGRESION LOGISTICA 1
+logist.fit = glm(crimen.class ~ . - crimen.class - crim, data = Boston, subset = train,
+                 family = binomial, 
+    )
+
+logist.probs = predict(logist.fit, Boston.test, type = "response")
+logist.pred = rep(0, length(logist.probs))
+logist.pred[logist.probs > 0.5] = 1
+mean(logist.pred != crimen.class.test)*100
+```
+
+<span class="negrilla"> * Regresión Logística (sin ptratio, chas, black, rm, medv y zn): </span>
+
+```{r, warning=FALSE}
+#REGRESION LOGISTICA 2
+logist.fit = glm(crimen.class ~ . -crimen.class -crim -ptratio -chas -black -rm -medv -zn ,
+                 data = Boston, subset = train, family = binomial)
+
+logist.probs = predict(logist.fit, Boston.test, type = "response")
+logist.pred = rep(0, length(logist.probs))
+logist.pred[logist.probs > 0.5] = 1
+mean(logist.pred != crimen.class.test)*100
+```
+
+Para ambos casos de regresión logística la varaible dependiente utilizada fue la de crimen, pero, mientras que en la primera se utilizaron todas las demás, durante el segundo modelo se quitaron ptratio, chas, black, rm, medv y zn debido a que estas presentan muy poca correlación con la varaible crimen. La tasa del error para le primer modelo fue de 8.666667%, mientras que para el segundo fue de 10.66667%. En consecuencia, se llegó a que el primer modelo fue el mejor predictor.
+
+<span class="negrilla"> * LDA (todos): </span>
+
+```{r, warning=FALSE}
+lda.fit = lda(crimen.class ~ . -crimen.class -crim, data = Boston, subset = train)
+lda.pred = predict(lda.fit, Boston.test)
+mean(lda.pred$class != crimen.class.test)*100
+```
+
+<span class="negrilla"> * LDA (sin ptratio, chas, black, rm, medv y zn): </span>
+
+```{r, warning=FALSE}
+lda.fit = lda(crimen.class ~ . -crimen.class -crim -ptratio -chas -black -rm -medv -zn,
+                 data = Boston, subset = train)
+lda.pred = predict(lda.fit, Boston.test)
+mean(lda.pred$class != crimen.class.test)*100
+```
+
+<span class="negrilla"> * LDA (sin zn, chas, tax y nox): </span>
+
+```{r, warning=FALSE}
+lda.fit = lda(crimen.class ~ . -crimen.class -crim -zn -tax -nox,
+                 data = Boston, subset = train)
+lda.pred = predict(lda.fit, Boston.test)
+mean(lda.pred$class != crimen.class.test)*100
+```
+
+<span class="negrilla"> * LDA (sin zn, crim, chas y rm): </span>
+
+```{r, warning=FALSE}
+lda.fit = lda(crimen.class ~ . -crimen.class -crim -chas -rm ,
+                 data = Boston, subset = train)
+lda.pred = predict(lda.fit, Boston.test)
+mean(lda.pred$class != crimen.class.test)*100
+```
+
+Se crearon varios modelos para intentar reducir el error utilizando LDA, pero ninguno de los 3 intentos distintos dieron un resultado satisfactorio ya que el primero resultó ser el mejor de todos con un error del 12%.
+
+
+```{r, warning=FALSE}
+# KNN
+train.X = cbind(zn, indus, chas, nox, rm, age, dis, rad, tax, ptratio, black, 
+                 lstat, medv)[train, ]
+test.X = cbind(zn, indus, chas, nox, rm, age, dis, rad, tax, ptratio, black, 
+                lstat, medv)[-train, ]
+train.crimen.class = crimen.class[train]
+set.seed(98)
+```
+
+<span class="negrilla"> * KNN (K = 1): </span>
+
+```{r, warning=FALSE}
+# KNN(k=1)
+knn.pred = knn(train.X, test.X, train.crimen.class, k = 1)
+mean(knn.pred != crimen.class.test)*100
+```
+
+<span class="negrilla"> * KNN (K = 5): </span>
+
+```{r, warning=FALSE}
+knn.pred = knn(train.X, test.X, train.crimen.class, k = 5)
+mean(knn.pred != crimen.class.test)*100
+```
+
+<span class="negrilla"> * KNN (K = 10): </span>
+
+```{r, warning=FALSE}
+knn.pred = knn(train.X, test.X, train.crimen.class, k = 10)
+mean(knn.pred != crimen.class.test)*100
+```
+
+<span class="negrilla"> * KNN (K = 50): </span>
+
+```{r, warning=FALSE}
+knn.pred = knn(train.X, test.X, train.crimen.class, k = 50)
+mean(knn.pred != crimen.class.test)*100
+```
+
+<span class="negrilla"> * KNN (K = 100): </span>
+
+```{r, warning=FALSE}
+knn.pred = knn(train.X, test.X, train.crimen.class, k = 100)
+mean(knn.pred != crimen.class.test)*100
+```
+
+Se tomaron modelos para diferentes valores de K, contando con todas las variables presentes (K=1, K=5, K=10, K=50 Y K=100). Luego de llegar a todos los resultados, se observó que k=5 mostraba una mejor precisión, con un porcentaje de error de tan solo 6.666667%.
+
+
+```{r, warning=FALSE}
+# KNN(k=10) CON UN SUBCONJUNTO DE LAS VARIABLES
+train.X = cbind(zn, indus, nox, age, dis, rad, ptratio, black, medv)[train, ]
+test.X = cbind(zn, indus, nox, age, dis, rad, ptratio, black, medv)[-train, ]
+
+#(K=1)
+knn.pred = knn(train.X, test.X, train.crimen.class, k = 1)
+mean(knn.pred != crimen.class.test)*100
+#(K=10)
+knn.pred = knn(train.X, test.X, train.crimen.class, k = 10)
+mean(knn.pred != crimen.class.test)*100
+```
+
+Luego de hacer las predicciones para un subconjunto de las varaibles, se obtuvo que para  K= 1 el error era de 13.86% , mientras que para K = 10 era de 14.85%.
+
 
 
 # <span class="titulo_capitulo">Capítulo 8.4 (Tree-Based Methods)</span> {#cap8_4}
