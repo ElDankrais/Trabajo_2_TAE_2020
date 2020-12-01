@@ -1,5 +1,5 @@
 ---
-title: "TAE - Accidentalidad en Medellín - Reporte Técnico"
+title: "TAE - SEGUNDO TRABAJO 2020-02"
 author: "Jaime Andres Molina Correa <br> Valentina García Velasquez <br> Felipe Villarreal Piedrahita <br> Ricardo Penaloza Velasquez <br> Daniel Chanci Restrepo"
 output:
   html_document:
@@ -16,7 +16,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 options(Encoding="UTF-8")
  
 library("ggplot2")                     # Load ggplot2 package
@@ -26,9 +26,9 @@ pacman::p_load("tidyverse", "knitr", "leaps")
 source("functions.R", local = knitr::knit_global())
 knitr::opts_chunk$set(echo = TRUE, comment = NA, tidy.opts = list(width.cutoff = 60), tidy = T)
 ```
-#### <span>Universidad Nacional de Colombia sede Medellín</span> {.place}
-
-#### Resumen {.letra}
+<span>Universidad Nacional de Colombia sede Medellín</span> 
+  
+<b>Resumen: </b>
 En este trabajo se abarcan los ejercicios aplicados del texto guía "An Introduction to Statistical Learning with Applications in R" de la materia técnicas de aprendizaje estadístico impartida en la Universidad Nacional de Colombia sede Medellín.
 
 # <span class="titulo_capitulo ">Capítulo 4.7 (Classification)</span> {#cap4_7}
@@ -476,9 +476,889 @@ plot(x, Power3(x, 2), log = "xy", ylab = "Log(y) = x^2", xlab = "Log(x)",
 
 <span class="negrilla">then a plot should be created with an x-axis taking on values 1, 2, . . . , 10, and a y-axis taking on values 13, 23, . . . , 103.</span>
 
-```{r, warning=FALSE, message=FALSE}
+```{r message=FALSE, warning=FALSE}
 PlotPower = function(x, a) {
     plot(x, Power3(x, a), ylab = "X^a")
 }
 PlotPower(1:10, 3)
+
 ```
+
+# <span class="titulo_capitulo">Capítulo 9.7</span> {#cap9_7}
+
+## <span class="titulo_ejercicio">Ejercicio 4</span> {.letra}
+<span class="negrilla subrayar">Generate a simulated two-class data set with 100 observations and two features in which there is a visible but non-linear separation between the two classes. Show that in this setting, a support vector machine with a polynomial kernel (with degree greater than 1) or a radial kernel will outperform a support vector classifier on the training data. Which technique performs best on the test data? Make
+plots and report training and test error rates in order to back up your assertions.</span>
+
+```{r, warning=FALSE}
+library(e1071)
+#Se crean los datos X y Y aleatorios
+set.seed(200)
+x = rnorm(100)
+y = 4* -x^2 + 2 + rnorm(100)
+#60% serán de la clase +1 y 40% de la clase -1
+clasepos = sample(100, 60)
+y[clasepos] = y[clasepos] +4
+y[-clasepos] = y[-clasepos] -1
+z = rep(-1, 100)
+z[clasepos] = 1
+
+plot(y[clasepos],x[clasepos], pch=2, lwd=4, col="cornflowerblue", xlim=c(-15, 10), xlab="Y", ylab="X")
+points(y[-clasepos], x[-clasepos], pch=8, lwd=4, col="coral1")
+```
+
+```{r, warning=FALSE, message=FALSE}
+#Se crean las variables respuestas -1 y +1
+set.seed(300)
+datos = data.frame(x,y,z = as.factor(z))
+#70% de los datos se usarán para entrenar y 30% para prueba
+train = sample(100, 70)
+datos.train = datos[train,]
+datos.test = datos[-train,]
+
+#Se verifica la distribución de las clases en los datos de entrenamiento y de prueba
+table(datos.train[,3])
+table(datos.test[,3])
+
+prop.table(table(datos.train[,3]))
+prop.table(table(datos.test[,3]))
+```
+
+<span class="negrilla">Error en el conjunto de entrenamiento</span>
+<br>
+<span class="negrilla">KERNEL LINEAL</span>
+
+```{r}
+svm.linear = svm(z~., data=datos.train, kernel="linear", cost=10)
+plot(svm.linear, datos.train)
+```
+
+```{r}
+prediccion = predict(svm.linear, datos.train)
+table(prediccion , real = datos.train$z)
+train.error = round(mean(prediccion != datos.train$z)*100,3)
+
+paste("Para el Kernel Lineal, el error de entrenamiento es: ", train.error, "%")
+```
+
+<span class="negrilla">KERNEL POLINOMIAL</span>
+```{r}
+set.seed(500)
+svm.poly = svm(z~., data=datos.train, kernel="polynomial", cost=10, degree=11)
+plot(svm.poly, datos.train)
+```
+
+```{r}
+prediccion = predict(svm.poly, datos.train)
+table(prediccion , real = datos.train$z)
+train.error = round(mean(prediccion != datos.train$z)*100,3)
+
+paste("Para un Kernel Polinomial de grado 11, el error de entrenamiento es: ", train.error, "%")
+```
+
+<span class="negrilla">KERNEL RADIAL</span>
+```{r}
+set.seed(600)
+svm.radial = svm(z~., data=datos.train, kernel="radial", gamma=1, cost=10)
+plot(svm.radial, datos.train)
+```
+
+```{r}
+prediccion = predict(svm.radial, datos.train)
+table(prediccion , real = datos.train$z)
+train.error = round(mean(prediccion != datos.train$z)*100,3)
+
+paste("Para un Kernel Radial el error de entrenamiento es: ", train.error, "%")
+```
+
+<span class="negrilla">Error en el conjunto de validación</span>
+<br>
+<span class="negrilla">KERNEL LINEAL</span>
+```{r}
+plot(svm.linear, datos.test)
+```
+
+```{r}
+prediccion = predict(svm.linear, datos.test)
+table(prediccion , real = datos.test$z)
+test.error = round(mean(prediccion != datos.test$z)*100,3)
+
+paste("Para un Kernel Lineal el error de prueba es: ", test.error, "%")
+```
+<span class="negrilla">KERNEL POLINOMIAL</span>
+```{r}
+plot(svm.poly, datos.test)
+```
+
+```{r}
+prediccion = predict(svm.poly, datos.test)
+table(prediccion , real = datos.test$z)
+test.error = round(mean(prediccion != datos.test$z)*100,3)
+
+paste("Para un Kernel Polinomial el error de prueba es: ", test.error, "%")
+```
+<span class="negrilla">KERNEL RADIAL</span>
+```{r}
+plot(svm.radial, datos.test)
+```
+
+```{r}
+prediccion = predict(svm.radial, datos.test)
+table(prediccion , real = datos.test$z)
+test.error = round(mean(prediccion != datos.test$z)*100,3)
+
+paste("Para un Kernel Radial el error de prueba es: ", test.error, "%")
+```
+
+Se puede evidenciar que el mejor modelo de SVM para este conjunto de datos es que usa un <span class="naranja">kernel radial</span> debido a que tiene un error del **0%** en los datos de entrenamiento y un error de prueba de **3.3%**. Si se compara el modelo SVM con kernel lineal y el modelo SVM con kernel polinomia se ve que el que usa kernel lineal tiene una mejor aproximación. Esto puede ser causado al alto grado del polinomio usado, causando que no se ajustan bien los datos.
+
+## <span class="titulo_ejercicio">Ejercicio 5</span> {.letra}
+
+<span class = "negrilla subrayas">We have seen that we can fit an SVM with a non-linear kernel in order to perform classification using a non-linear decision boundary.We will now see that we can also obtain a non-linear decision boundary by performing logistic regression using non-linear transformations of the features.</span>
+
+### <span class="negrilla">(a)</span> {.letra}
+<span class ="negrilla">Generate a data set with n = 500 and p = 2, such that the observations belong to two classes with a quadratic decision boundary between them. For instance, you can do this as follows:</span>
+> x1=runif (500) -0.5
+> x2=runif (500) -0.5
+> y=1*( x1^2-x2^2 > 0)
+
+```{r}
+set.seed(700)
+x1 = runif(500) - 0.5
+x2 = runif(500) - 0.5
+y = 1*(x1^2 - x2^2 > 0)
+```
+
+
+### <span class="negrilla">(b)</span> {.letra}
+<span class="negrilla">Plot the observations, colored according to their class labels. Your plot should display X1 on the x-axis, and X2 on the yaxis.</span>
+
+```{r}
+plot(x1[y == 1], x2[y == 1], col = "darkred", xlab = "X1", ylab = "X2", pch = 4)
+points(x1[y == 0], x2[y == 0], col = "forestgreen", pch = 19)
+```
+
+### <span class="negrilla">(c)</span> {.letra}
+<span class="negrilla">Fit a logistic regression model to the data, using X1 and X2 as predictors.</span>
+
+```{r}
+datos = data.frame(x1 = x1, x2 = x2, y = y)
+lg.fit = glm(y ~ ., data = datos, family = binomial)
+summary(lg.fit)
+```
+
+
+### <span class="negrilla">(d)</span> {.letra}
+<span class="negrilla">Apply this model to the training data in order to obtain a predicted class label for each training observation. Plot the observations, colored according to the predicted class labels. The decision boundary should be linear.</span>
+
+```{r}
+lg.probs = predict(lg.fit, newdata = datos, type = "response")
+lg.pred = ifelse(lg.probs > 0.5, 1, 0)
+datos.pos = datos[lg.pred == 1, ]
+datos.neg = datos[lg.pred == 0, ]
+plot(datos.pos$x1, datos.pos$x2, col = "darkred", xlab = "X1", ylab = "X2", pch = 4)
+points(datos.neg$x1, datos.neg$x2, col = "forestgreen", pch = 19)
+```
+
+
+Se puede ver una clara diferenciación entre las dos clases usando regresión logística, incluso llegabdo a existir un límite línea para el conjunto de datos.
+
+
+### <span class="negrilla">(e)</span> {.letra}
+<span class="negrilla">Now fit a logistic regression model to the data using non-linear functions of X1 and X2 as predictors (e.g. X21 , X1×X2, log(X2), and so forth).</span>
+
+```{r, warning=FALSE}
+lg.nolineal.fit = glm(y ~ poly(x1, 3) + poly(x2, 4) + I(x1*x2) , data = datos, family = binomial)
+summary(lg.nolineal.fit)
+```
+
+
+### <span class="negrilla">(f)</span> {.letra}
+<span class="negrilla">Apply this model to the training data in order to obtain a predicted class label for each training observation. Plot the observations, colored according to the predicted class labels. The decision boundary should be obviously non-linear. If it is not, then repeat (a)-(e) until you come up with an example in which the predicted class labels are obviously non-linear.</span>
+
+```{r}
+lg.nolineal.probs = predict(lg.nolineal.fit, datos, type = "response")
+lg.nolineal.pred = ifelse(lg.nolineal.probs > 0.5, 1, 0)
+datos.pos = datos[lg.nolineal.pred == 1, ]
+datos.neg = datos[lg.nolineal.pred == 0, ]
+plot(datos.pos$x1, datos.pos$x2, col = "darkred", xlab = "X1", ylab = "X2", pch = 4)
+points(datos.neg$x1, datos.neg$x2, col = "forestgreen", pch = 19)
+```
+
+A diferencia del modelo anterior, si se usa regresión logística anterior ya no existe el "límite lineal", por lo cual se habla de un límite no lineal que haga una división completa de las dos clases
+
+
+### <span class="negrilla">(g)</span> {.letra}
+<span class="negrilla">Fit a support vector classifier to the data with X1 and X2 as predictors. Obtain a class prediction for each training observation. Plot the observations, colored according to the predicted class labels.</span>
+
+```{r, warning=FALSE}
+library(e1071)
+svm.fit = svm(as.factor(y) ~ ., data = datos, kernel = "linear", cost = 1)
+svm.pred = predict(svm.fit, datos)
+datos.pos = datos[svm.pred == 1, ]
+datos.neg = datos[svm.pred == 0, ]
+plot(datos.pos$x1, datos.pos$x2, col = "darkred", xlab = "X1", ylab = "X2", pch = 4)
+points(datos.pos$x1, datos.pos$x2, col = "forestgreen", pch = 19)
+```
+
+
+Se puede evidenciar que el modelo SVM de núcleo lineal no tiene la capacidad de identificar los limites entre las clase, por lo cual no realiza de forma correcta las predicciones.
+
+
+### <span class="negrilla">(h)</span> {.letra}
+<span class="negrilla">Fit a SVM using a non-linear kernel to the data. Obtain a class prediction for each training observation. Plot the observations, colored according to the predicted class labels.</span>
+
+```{r}
+svm.fit = svm(as.factor(y) ~ ., datos, gamma = 1)
+svm.pred = predict(svm.fit, datos)
+datos.pos = datos[svm.pred == 1, ]
+datos.neg = datos[svm.pred == 0, ]
+plot(datos.pos$x1, datos.pos$x2, col = "darkred", xlab = "X1", ylab = "X2", pch = 4)
+points(datos.neg$x1, datos.neg$x2, col = "forestgreen", pch = 19)
+```
+
+
+En cambio, si se usa un modelo SVM con un núcleo no lineal se puede identificar claramente la no linealidad entre las clases, lo que ocasiona una buena clasificación delas diferentes clases.
+
+
+### <span class="negrilla">(i)</span> {.letra}
+<span class="negrilla">Comment on your results.</span><br>
+
+Como la relación entre los datos no es lineal, la regresión logística lineal o un SVM con núcleo lineal no sirven de mucho para clasificar estos datos. En cambio, se se usa una regresión logísitca no lineal o un SVM con kernel radial permiten clasificar de buena manera estos datos, siendo más fácil usar la regresión logística no lineal ya que depende solamente de un buen ajuste para el parámetro gamma.
+
+    
+## <span class="titulo_ejercicio">Ejercicio 6</span> {.letra}
+
+<span class="negrilla subrayar">At the end of Section 9.6.1, it is claimed that in the case of data that is just barely linearly separable, a support vector classifier with a small value of cost that misclassifies a couple of training observations may perform better on test data than one with a huge value of cost that does not misclassify any training observations. You will now investigate this claim.</span>
+
+### <span class="negrilla">(a)</span> {.letra}
+<span class="negrilla">Generate two-class data with p = 2 in such a way that the classes are just barely linearly separable.</span>
+
+```{r, warning=FALSE}
+library(e1071)
+library(ggplot2)
+library(dplyr)
+```
+```{r, warning=FALSE}
+set.seed(2520)
+
+x.pos = runif(450, 0, 90)
+y.pos = runif(450, x.pos + 10, 100)
+x.pos.ruido = runif(50, 20, 80)
+y.pos.ruido = 5/4 * (x.pos.ruido - 10) + 0.1
+
+x.neg = runif(450, 10, 100)
+y.neg = runif(450, 0, x.neg - 10)
+x.neg.ruido = runif(50, 20, 80)
+y.neg.ruido = 5/4 * (x.neg.ruido - 10) - 0.1
+
+x = c(x.pos, x.pos.ruido, x.neg, x.neg.ruido)
+y = c(y.pos, y.pos.ruido, y.neg, y.neg.ruido)
+
+positivos = seq(1, 500)
+z = rep(-1, 1000)
+z[positivos] = 1
+
+datos = data.frame(X = x, Y = y, z = as.factor(z))
+
+ggplot(data = datos, aes(x = X, y = Y, color = as.factor(z))) +
+  geom_point(size = 2) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+Al generar el conjunto de datos se puede evidenciar que no pueden ser separados por una línea reca, debido a que cada recta que se genere va a tener algunas clasificaciones erróneas de alguna de las clases.
+
+
+### <span class="negrilla">(b)</span> {.letra}
+<span class="negrilla">Compute the cross-validation error rates for support vector classifiers with a range of cost values. How many training errors are misclassified for each value of cost considered, and how does this relate to the cross-validation errors obtained?</span>
+
+```{r, warning=FALSE}
+set.seed(325)
+model.tuning <- tune(svm, z ~ ., data = datos, 
+               kernel = "linear", 
+               ranges = list(cost = c(0.01, 0.1, 1, 5, 10, 50, 100, 500, 1000,5000)))
+
+summary(model.tuning)
+ggplot(data = model.tuning$performances, aes(x = cost, y = error)) +
+  geom_line(color= "darkorchid") +
+  geom_point(color="darkorchid4") +
+  labs(title = "Error de clasificación vs parámetro C") +
+  theme_bw()
+```
+```{r, warning=FALSE}
+paste("El mejor modelo es el siguiente:")
+model.tuning$best.model
+```
+
+A medida que se aumenta el parámetro C (costo), se va a disminuir el error de entrenamiento. Utilizando el valor máximo del costo (c = 5000), se evidencia un uso de 49 vectores de soporte.
+
+
+### <span class="negrilla">(c)</span> {.letra}
+<span class="negrilla">Generate an appropriate test data set, and compute the test errors corresponding to each of the values of cost considered. Which value of cost leads to the fewest test errors, and how does this compare to the values of cost that yield the fewest training errors and the fewest cross-validation errors?</span>
+
+```{r}
+set.seed(2321)
+x.test = runif(1000, 0, 100)
+positivos = sample(1000, 500)
+y.test = rep(NA, 1000)
+for (i in positivos) {
+    y.test[i] = runif(1, x.test[i], 100)
+}
+for (i in setdiff(1:1000, positivos)) {
+    y.test[i] = runif(1, 0, x.test[i])
+}
+
+z.test = rep(-1, 1000)
+z.test[positivos] = 1
+datos.test = data.frame(X = x.test, Y = y.test, z = as.factor(z.test))
+
+ggplot(data = datos.test, aes(x = x.test, y = y.test, color = as.factor(z.test))) +
+  geom_point(size = 2) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+Ahora si se ve una clara separacion lineal entre este conjunto de datos.
+
+
+```{r}
+costos = c(0.01, 0.1, 1, 5, 10, 50, 100, 500,1000)
+mal.clasificadas = rep(NA, length(costos))
+errores.test = rep(NA, length(costos))
+for (i in 1:length(costos)) {
+    svm.fit = svm(z ~ ., data = datos, kernel = "linear", cost = costos[i])
+    svm.predict = predict(svm.fit, datos.test)
+    mal.clasificadas[i] = sum(svm.predict !=datos.test$z)
+    errores.test[i] = mean(svm.predict != datos.test$z)*100
+}
+resultado = data.frame(costo = costos, mal_clasificadas = mal.clasificadas, porcentaje_error = errores.test)
+
+ggplot(data = resultado, aes(x = costo, y = mal.clasificadas)) +
+  geom_line(color= "firebrick") +
+  geom_point(color="firebrick") +
+  labs(title = "Error de clasificación vs parámetro costo") +
+  theme_bw()
+
+resultado
+```
+
+Con los datos de prueba se ve que no es necesario un valor de c tan alto como en el caso anterior. usando C = 5 o C = 10 se da una correcta clasificación de los datos
+
+
+### <span class="negrilla">(d)</span> {.letra}
+<span class="negrilla">Discuss your results.</span>
+
+Al utilizar un valor de c tan alto en los datos de entrenamiento, el modelo se ajusta más a los datos, por lo cual se crea un sobreentrenamiento (overfitting). En cambio, con los datos de prueba se presenta un caso en que usando un valor de c = 5, se presenta un margen que no deja pasar tantos puntos ruidosos, que clasifica bien los datos y que además no presenta sobreentrenamiento. Esto se puede ver en la siguiente gráfica del hiperplano:
+
+
+```{r, warning=FALSE}
+#PRIMERA FORMA DE GRAFICAR EL MODELO FORMA BASICA
+svm.5 = svm(z ~ ., data = datos, kernel = "linear", cost = 5)
+plot(svm.5, datos)
+
+#SEGUNDA FORMA DE GRAFICAR EL MODELO
+predicciones = predict(svm.5, datos.test)
+
+# Se almacenan los puntos predichos para dar color a las regiones
+color_regiones = data.frame(datos.test, y = predicciones)
+beta = drop(t(svm.5$coefs) %*% as.matrix(datos[,c("X","Y")])[svm.5$index,])
+beta0 = svm.5$rho
+
+# Representación de las 2 regiones empleando los puntos y coloreándolos
+ggplot() +
+  geom_point(data = color_regiones, aes(x = Y, y = X, color = as.factor(y)),size = 4) +
+  # Se añaden las observaciones iniciales
+  geom_point(data = datos, aes(x = Y, y = X, color = as.factor(z)),size = 2) +
+  # Se identifican aquellas observaciones que son vectores soporte del modelo
+  geom_point(data = datos[svm.5$index, ],
+             aes(x = Y, y = X, color = as.factor(z)),
+             shape = 21, colour = "black",
+             size = 10) +
+  # Se añaden las rectas del hiperplano y los márgenes
+  geom_abline(intercept = beta0/beta[2], slope = -beta[1]/beta[2]) +
+  geom_abline(intercept = (beta0 - 1)/beta[2], slope = -beta[1]/beta[2],
+              linetype = "dashed") +    
+  geom_abline(intercept = (beta0 + 1)/beta[2], slope = -beta[1]/beta[2],
+              linetype = "dashed") +
+  theme_bw() +
+  theme(legend.position = "top")
+```
+
+
+## <span class="titulo_ejercicio">Ejercicio 7</span> {.letra}
+
+<span class="negrilla subrayar">In this problem, you will use support vector approaches in order to predict whether a given car gets high or low gas mileage based on the Auto data set.</span>
+
+### <span class="negrilla">(a)</span> {.letra}
+<span class="negrilla">Create a binary variable that takes on a 1 for cars with gas mileage above the median, and a 0 for cars with gas mileage below the median.</span>
+
+```{r, warning=FALSE}
+library(ISLR)
+library(e1071)
+mediana = median(Auto$mpg)
+nivel.gasol = ifelse(Auto$mpg > mediana, 1, 0)
+Auto$nivel.gasol = as.factor(nivel.gasol)
+```
+
+### <span class="negrilla">(b)</span> {.letra}
+<span class="negrilla">Fit a support vector classifier to the data with various values of cost, in order to predict whether a car gets high or low gas mileage. Report the cross-validation errors associated with different values of this parameter. Comment on your results.</span>
+
+```{r}
+set.seed(2000)
+tuning.lineal = tune(svm, nivel.gasol ~ ., data = Auto, kernel = "linear", 
+              ranges = list(cost = c(0.001, 0.01,0.1, 1, 5, 10, 20, 30)),
+              scale = TRUE)
+
+summary(tuning.lineal)
+ggplot(data = tuning.lineal$performances, aes(x = cost, y = error)) +
+  geom_line(color= "cyan4") +
+  geom_point(color="cyan4") +
+  labs(title = "Error de clasificación vs parametro C") +
+  theme_bw()
+```
+
+```{r, warning=FALSE}
+paste("EL MEJOR MODELO ESTÁ CONFIGURADO DE LA SIGUIENTE FORMA:")
+summary(tuning.lineal$best.model)
+```
+
+Si se toman valores de C entre 0.01 y 1, se puede notar que a medida que aumenta C, el error decrece hasta llegar a valer <span class ="naranja">0.01275841</span> justo en C = 1. Cuando se toman valores mayores a 1, el error empieza a crecer lentamente. Con C = 1 se crea un modelo con 56 vectores de soporte que se reparten entre 26 para una clase y 30 para la otra.
+
+
+
+### <span class="negrilla">(c)</span> {.letra}
+<span class ="negrilla">Now repeat (b), this time using SVMs with radial and polynomial basis kernels, with different values of gamma and degree and cost. Comment on your results.</span>
+
+```{r}
+set.seed(500)
+tuning.poli = tune(svm, nivel.gasol ~ ., data = Auto, kernel = "polynomial", 
+                    ranges = list(cost = c(0.1, 1, 5, 10, 15, 20),
+                    degree = c(2, 3, 4)),
+                    scale = TRUE)
+summary(tuning.poli)
+
+ggplot(data = tuning.poli$performances, aes(x = cost, y = error, col = as.factor(degree))) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Error de clasificación vs parametro c y grado polinomio") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_bw() + theme(legend.position = "bottom")
+```
+
+```{r, warning=FALSE}
+paste("EL MEJOR MODELO ESTÁ CONFIGURADO DE LA SIGUIENTE FORMA:")
+summary(tuning.poli$best.model)
+```
+
+Con un polinomio de grado dos y un costo de 20 se alcanza el error mínimo, que vale <span class ="naranja">0.4345513</span>. El modelo svm configurado de esta manera usa 384 vectores de soporte que se reparten equitativamente entre cada clase (192 para cada una). Además, se puede notar graficamente que si se aumenta el grado del polinomio, el error no va a disminuir sin importar que se modifique el parámetro costo.
+
+
+```{r}
+set.seed(600)
+tuning.radial = tune(svm, nivel.gasol ~ ., data = Auto, kernel = "radial", 
+                    ranges = list(cost = c(0.1, 1, 5, 10,20), 
+                    gamma = c(0.01, 0.1, 1, 5, 10, 20,50)))
+summary(tuning.radial)
+
+ggplot(data = tuning.radial$performances, aes(x = cost, y = error, color = factor(gamma))) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Error de Clasificación vs parámetros C y gamma") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position = "bottom")
+```
+
+```{r, warning=FALSE}
+paste("EL MEJOR MODELO ESTÁ CONFIGURADO DE LA SIGUIENTE FORMA:")
+summary(tuning.radial$best.model)
+```
+
+En el caso radial el error mínimo se alcanza cuando se toma un costo = 20 y un parámetro gamma de 0.01. Con estos parámetos de obtiene un error de <span class ="naranja">0.01525641</span>, con un modelo SVM de 72 vectores de soporte que se reparten de la siguiente forma: 35 para una clase y 37 para la otra. El modelo con kernel radial es el que menor error presenta entre los 3 tipos de modelos posibles.
+
+
+### <span class="negrilla">(d)</span> {.letra}
+<span class="negrilla">Make some plots to back up your assertions in (b) and (c).</span>
+
+*Hint: In the lab, we used the plot() function for svm objects only in cases with p = 2. When p > 2, you can use the plot() function to create plots displaying pairs of variables at a time. Essentially, instead of typing*
+
+> plot(svmfit , dat)
+
+*where svmfit contains your fitted model and dat is a data frame containing your data, you can type*
+
+> plot(svmfit , dat , x1∼x4)
+
+*in order to plot just the first and fourth variables. However, you must replace x1 and x4 with the correct variable names. To find out more, type ?plot.svm.*
+
+<span class="negrilla">GRAFICAS PARA RESPALDAR EL MEJOR MODELO SVM LINEAL</span>
+
+```{r, echo=FALSE}
+#mpg y displacement
+datos = Auto[,c("mpg", "displacement", "nivel.gasol")]
+ggplot() +
+geom_point(data = datos, aes(x = mpg, y = displacement, color = nivel.gasol), size = 3) +
+geom_point(data = datos[tuning.lineal$best.model$index, ],
+           aes(x = mpg, y = displacement, color = nivel.gasol),
+           shape = 21, colour = "green",
+           size = 5) +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme_bw() + theme(legend.position = "top") +
+theme(panel.background = element_rect(fill='gray0', colour='gray0'))
+
+#mpg y horsepower
+datos = Auto[,c("mpg", "horsepower", "nivel.gasol")]
+ggplot() +
+geom_point(data = datos, aes(x = mpg, y = horsepower, color = nivel.gasol), size = 3) +
+geom_point(data = datos[tuning.lineal$best.model$index, ],
+           aes(x = mpg, y = horsepower, color = nivel.gasol),
+           shape = 21, colour = "green",
+           size = 5) +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme_bw() + theme(legend.position = "top") +
+theme(panel.background = element_rect(fill='gray0', colour='gray0'))
+
+#mpg y year
+datos = Auto[,c("mpg", "year", "nivel.gasol")]
+ggplot() +
+geom_point(data = datos, aes(x = mpg, y = year, color = nivel.gasol), size = 3) +
+geom_point(data = datos[tuning.lineal$best.model$index, ],
+           aes(x = mpg, y = year, color = nivel.gasol),
+           shape = 21, colour = "green",
+           size = 5) +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme_bw() + theme(legend.position = "top") +
+theme(panel.background = element_rect(fill='gray0', colour='gray0'))
+
+#mpg y acceleration
+datos = Auto[,c("mpg", "acceleration", "nivel.gasol")]
+ggplot() +
+geom_point(data = datos, aes(x = mpg, y = acceleration, color = nivel.gasol), size = 3) +
+geom_point(data = datos[tuning.lineal$best.model$index, ],
+           aes(x = mpg, y = acceleration, color = nivel.gasol),
+           shape = 21, colour = "green",
+           size = 5) +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme_bw() + theme(legend.position = "top") +
+theme(panel.background = element_rect(fill='gray0', colour='gray0'))
+```
+
+<span class="negrita">GRÁFICAS CON EL MEJOR MODELO SVM POLINOMIAL</span>
+
+```{r, echo=FALSE}
+#mpg y displacement
+datos = Auto[,c("mpg", "displacement", "nivel.gasol")]
+ggplot() +
+geom_point(data = datos, aes(x = mpg, y = displacement, color = nivel.gasol), size = 3) +
+geom_point(data = datos[tuning.poli$best.model$index, ],
+           aes(x = mpg, y = displacement, color = nivel.gasol),
+           shape = 21, colour = "yellow",
+           size = 3) +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme_bw() + theme(legend.position = "top") +
+theme(panel.background = element_rect(fill='gray69', colour='gray69'))
+
+#mpg y horsepower
+datos = Auto[,c("mpg", "horsepower", "nivel.gasol")]
+ggplot() +
+geom_point(data = datos, aes(x = mpg, y = horsepower, color = nivel.gasol), size = 3) +
+geom_point(data = datos[tuning.poli$best.model$index, ],
+           aes(x = mpg, y = horsepower, color = nivel.gasol),
+           shape = 21, colour = "yellow",
+           size = 3) +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme_bw() + theme(legend.position = "top") +
+theme(panel.background = element_rect(fill='gray69', colour='gray69'))
+
+#mpg y year
+datos = Auto[,c("mpg", "year", "nivel.gasol")]
+ggplot() +
+geom_point(data = datos, aes(x = mpg, y = year, color = nivel.gasol), size = 3) +
+geom_point(data = datos[tuning.poli$best.model$index, ],
+           aes(x = mpg, y = year, color = nivel.gasol),
+           shape = 21, colour = "yellow",
+           size = 3) +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme_bw() + theme(legend.position = "top") +
+theme(panel.background = element_rect(fill='gray69', colour='gray69'))
+
+#mpg y acceleration
+datos = Auto[,c("mpg", "acceleration", "nivel.gasol")]
+ggplot() +
+geom_point(data = datos, aes(x = mpg, y = acceleration, color = nivel.gasol), size = 3) +
+geom_point(data = datos[tuning.poli$best.model$index, ],
+           aes(x = mpg, y = acceleration, color = nivel.gasol),
+           shape = 21, colour = "yellow",
+           size = 3) +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme_bw() + theme(legend.position = "top") +
+theme(panel.background = element_rect(fill='gray69', colour='gray69'))
+```
+
+<span class="negrita">GRÁFICAS CON EL MEJOR MODELO SVM RADIAL</span>
+
+```{r, echo=FALSE}
+#mpg y displacement
+datos = Auto[,c("mpg", "displacement", "nivel.gasol")]
+ggplot() +
+geom_point(data = datos, aes(x = mpg, y = displacement, color = nivel.gasol), size = 3) +
+geom_point(data = datos[tuning.radial$best.model$index, ],
+           aes(x = mpg, y = displacement, color = nivel.gasol),
+           shape = 21, colour = "hotpink",
+           size = 4) +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme_bw() + theme(legend.position = "top") +
+theme(panel.background = element_rect(fill='ivory', colour='ivory'))
+
+#mpg y horsepower
+datos = Auto[,c("mpg", "horsepower", "nivel.gasol")]
+ggplot() +
+geom_point(data = datos, aes(x = mpg, y = horsepower, color = nivel.gasol), size = 3) +
+geom_point(data = datos[tuning.radial$best.model$index, ],
+           aes(x = mpg, y = horsepower, color = nivel.gasol),
+           shape = 21, colour = "hotpink",
+           size = 4) +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme_bw() + theme(legend.position = "top") +
+theme(panel.background = element_rect(fill='ivory', colour='ivory'))
+
+#mpg y year
+datos = Auto[,c("mpg", "year", "nivel.gasol")]
+ggplot() +
+geom_point(data = datos, aes(x = mpg, y = year, color = nivel.gasol), size = 3) +
+geom_point(data = datos[tuning.radial$best.model$index, ],
+           aes(x = mpg, y = year, color = nivel.gasol),
+           shape = 21, colour = "hotpink",
+           size = 4) +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme_bw() + theme(legend.position = "top") +
+theme(panel.background = element_rect(fill='ivory', colour='ivory'))
+
+#mpg y acceleration
+datos = Auto[,c("mpg", "acceleration", "nivel.gasol")]
+ggplot() +
+geom_point(data = datos, aes(x = mpg, y = acceleration, color = nivel.gasol), size = 3) +
+geom_point(data = datos[tuning.radial$best.model$index, ],
+           aes(x = mpg, y = acceleration, color = nivel.gasol),
+           shape = 21, colour = "hotpink",
+           size = 4) +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme_bw() + theme(legend.position = "top") +
+theme(panel.background = element_rect(fill='ivory', colour='ivory'))
+```
+
+## <span class="titulo_ejercicio">Ejercicio 8</span> {.letra}
+
+<span class ="negrilla subrayar">This problem involves the OJ data set which is part of the ISLR package.</span>
+
+### <span class="negrilla">(a)</span> {.letra}
+<span class="negrilla">Create a training set containing a random sample of 800 observations, and a test set containing the remaining observations.</span>
+
+```{r, warning=FALSE}
+library(ISLR)
+library(e1071)
+library(ggplot2)
+set.seed(700)
+train = sample(nrow(OJ), 800)
+OJ.train = OJ[train, ]
+OJ.test = OJ[-train, ]
+```
+
+### <span class="negrilla">(b)</span> {.letra}
+<span class="negrilla">Fit a support vector classifier to the training data using
+cost=0.01, with Purchase as the response and the other variables
+as predictors. Use the summary() function to produce summary
+statistics, and describe the results obtained.</span>
+
+```{r}
+svm.lineal = svm(Purchase ~ ., kernel = "linear", data = OJ.train, cost = 0.01)
+summary(svm.lineal)
+```
+
+De las 800 observaciones, el SVM lineal usa 444 las cuales reparte de una manera bastante equitativa (223 para la clase CH y 221 para la clase MM).
+
+
+### <span class="negrilla">(c)</span> {.letra}
+<span class="negrilla">What are the training and test error rates?</span>
+
+```{r}
+predic.train = predict(svm.lineal, OJ.train)
+table(predicho = predic.train, real = OJ.train$Purchase)
+error.train = round(mean(predic.train != OJ.train$Purchase),4)
+paste("El error de entrenamiento es: ", error.train)
+```
+
+
+```{r}
+predic.test = predict(svm.lineal, OJ.test)
+table(predicho = predic.test, OJ.test$Purchase)
+error.test = round(mean(predic.test != OJ.test$Purchase),4)
+paste("El error de prueba es: ", error.test)
+```
+
+### <span class="negrilla">(d)</span> {.letra}
+<span class="negrilla">Use the tune() function to select an optimal cost. Consider values
+in the range 0.01 to 10.</span>
+
+```{r}
+set.seed(200)
+model.tuning = tune(svm, Purchase ~ ., data = OJ.train, kernel = "linear", 
+                    ranges = list(cost = 10^seq(-2, 1, by = 0.25)))
+summary(model.tuning)
+
+ggplot(data = model.tuning$performances, aes(x = cost, y = error)) +
+  geom_line(color = "steelblue1") +
+  geom_point(color = "red") +
+  labs(title = "Error de clasificación vs costo") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_bw() + theme(legend.position = "none")
+```
+
+### <span class="negrilla">(e)</span> {.letra}
+<span class="negrilla">Compute the training and test error rates using this new value
+for cost.</span>
+
+Las caracterísiticas del modelo encontrado son:
+
+
+```{r, warning=FALSE}
+model.tuning$best.model
+```
+
+```{r}
+mejor.svm.lineal = svm(Purchase ~ ., kernel = "linear", data = OJ.train, 
+                       cost =model.tuning$best.parameters$cost)
+predic.train = predict(mejor.svm.lineal, OJ.train)
+table(predicho = predic.train, real = OJ.train$Purchase)
+error.train = round(mean(predic.train != OJ.train$Purchase),4)
+paste("El error de entrenamiento con el mejor svm lineal es de: ", error.train)
+```
+```{r}
+predic.test = predict(mejor.svm.lineal, OJ.test)
+table(predicho = predic.test, real = OJ.test$Purchase)
+error.test = round(mean(predic.test != OJ.test$Purchase),4)
+paste("El error de prueba con el mejor svm lineal es de: ", error.test)
+```
+
+### <span class="negrilla">(f)</span> {.letra}
+<span class="negrilla">Repeat parts (b) through (e) using a support vector machine
+with a radial kernel. Use the default value for gamma.</span>
+
+```{r}
+set.seed(600)
+svm.radial = svm(Purchase ~ ., data = OJ.train, kernel = "radial")
+summary(svm.radial)
+```
+
+<span class ="naranja">SVM con kernel radial: </span> 368 observaciones como vectores de soporte, parte a la mitad (184) para cada clase.
+
+
+```{r}
+predic.train = predict(svm.radial, OJ.train)
+table(predicho = predic.train, real = OJ.train$Purchase)
+error.train = round(mean(predic.train != OJ.train$Purchase),4)
+paste("El error de entrenamiento es: ", error.train)
+```
+
+```{r}
+predic.test = predict(svm.radial, OJ.test)
+table(predicho = predic.test, real = OJ.test$Purchase)
+error.test = round(mean(predic.test != OJ.test$Purchase),4)
+paste("El error de prueba es: ", error.test)
+```
+
+```{r}
+set.seed(400)
+tuning.radial = tune(svm, Purchase ~ ., data = OJ.train, kernel = "radial",
+                     ranges = list(cost = 10^seq(-2, 1, by = 0.25)))
+summary(tuning.radial)
+
+ggplot(data = tuning.radial$performances, aes(x = cost, y = error)) +
+  geom_line(color = "steelblue1") +
+  geom_point(color = "green") +
+  labs(title = "Error de clasificación vs costo") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_bw() + theme(legend.position = "none")
+```
+
+```{r}
+mejor.svm.radial = svm(Purchase ~ ., data = OJ.train, kernel = "radial", 
+                       cost = tuning.radial$best.parameters$cost)
+
+predic.train = predict(mejor.svm.radial, OJ.train)
+table(predicho = predic.train, real = OJ.train$Purchase)
+error.train = round(mean(predic.train != OJ.train$Purchase),4)
+paste("EL error de entrenamiento con el mejor svm radial es de: ", error.train)
+```
+
+```{r}
+predic.test = predict(mejor.svm.radial, OJ.test)
+table(predicho = predic.test, real = OJ.test$Purchase)
+error.test = round(mean(predic.test != OJ.test$Purchase),4)
+paste("El error de prueba con el mejor svm radial es de: ", error.test)
+```
+
+### <span class="negrilla">(g)</span> {.letra}
+<span class="negrilla">Repeat parts (b) through (e) using a support vector machine
+with a polynomial kernel. Set degree=2.</span>
+
+```{r}
+set.seed(1100)
+svm.poly = svm(Purchase ~ ., data = OJ.train, kernel = "poly", degree = 2)
+summary(svm.poly)
+```
+
+<span class ="naranja">SVM polinomial con grado 2: </span> 449 vectores de soporte distribuidos en 228 para la clase CH y 221 para la clase MM.
+
+
+```{r}
+predic.train = predict(svm.poly, OJ.train)
+table(predicho = predic.train, real = OJ.train$Purchase)
+error.train = round(mean(predic.train != OJ.train$Purchase),4)
+paste("El error de entrenamiento es: ", error.train)
+```
+
+```{r}
+predic.test = predict(svm.poly, OJ.test)
+table(predicho = predic.test, real = OJ.test$Purchase)
+error.test = round(mean(predic.test != OJ.test$Purchase),4)
+paste("El error de prueba es: ", error.test)
+```
+
+
+```{r}
+set.seed(100)
+tuning.poli = tune(svm, Purchase ~ ., data = OJ.train, kernel = "poly", degree = 2, 
+    ranges = list(cost = 10^seq(-2, 1, by = 0.25)))
+summary(tuning.poli)
+
+ggplot(data = tuning.poli$performances, aes(x = cost, y = error)) +
+  geom_line(color = "tan3") +
+  geom_point(color = "seagreen") +
+  labs(title = "Error de clasificación vs costo") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_bw() + theme(legend.position = "none")
+```
+
+```{r}
+mejor.svm.poly = svm(Purchase ~ ., data = OJ.train, kernel = "poly", degree = 2, 
+                     cost = tuning.poli$best.parameters$cost)
+
+predic.train = predict(mejor.svm.poly, OJ.train)
+table(predicho = predic.train, real = OJ.train$Purchase)
+error.train = round(mean(predic.train != OJ.train$Purchase),4)
+paste("El error de entrenamiento con el mejor svm lineal es de: ", error.train)
+```
+
+```{r}
+predic.test = predict(mejor.svm.poly, OJ.test)
+table(predicho = predic.test, real = OJ.test$Purchase)
+error.test = round(mean(predic.test != OJ.test$Purchase),4)
+paste("El error de prueba con el mejor svm lineal es de: ", error.test)
+```
+
+### <span class="negrilla">(h)</span> {.letra}
+<span class="negrilla">Overall, which approach seems to give the best results on this
+data?</span>
+
+Con respecto a los datos de entrenamiento, quién presenta mejor rendimiento es el modelo SVM polinomial. Sin embargo, con respecto a los datos de prueba, el SVM lineal es el mejor modelo.
