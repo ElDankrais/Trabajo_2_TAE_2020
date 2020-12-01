@@ -483,6 +483,607 @@ PlotPower = function(x, a) {
 PlotPower(1:10, 3)
 
 ```
+# <span class="titulo_capitulo">Capítulo 8.4 (Tree-Based Methods)</span> {#cap8_4}
+
+## <span class="titulo_ejercicio">Ejercicio 7</span> {.letra}
+
+<span class="negrilla subrayar">In the lab, we applied random forests to the <span class="naranja">Boston</span> data using <span class="naranja">mtry=6</span> and using <span class="naranja">ntree=25</span> and <span class="naranja">ntree=500</span>. Create a plot displaying the test error resulting from random forests on this data set for a more comprehensive range of values for <span class="naranja">mtry</span> and <span class="naranja">ntree</span>. You can model your plot after Figure 8.10. Describe the results obtained.</span>
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+library(MASS)
+library(randomForest)
+```
+
+```{r, warning=FALSE, message=FALSE}
+#summary(Boston)
+#Crear los subconjuntos de entreno y de prueba
+p = ncol(Boston) - 1
+p.2 = trunc(p/2)
+p.3 = trunc(p/3)
+p.raiz = trunc(sqrt(p))
+set.seed(100)
+train = sample(nrow(Boston), nrow(Boston)/2)
+X.train = Boston[train, -14]
+X.test = Boston[-train, -14]
+Y.train = Boston[train, 14]
+Y.test = Boston[-train, 14]
+rforest.p = randomForest(X.train, Y.train, xtest = X.test, ytest = Y.test, 
+    mtry = p, ntree = 500)
+rforest.p2 = randomForest(X.train, Y.train, xtest = X.test, ytest = Y.test, 
+    mtry = p.2, ntree = 500)
+rforest.p3 = randomForest(X.train, Y.train, xtest = X.test, ytest = Y.test, 
+    mtry = p.3, ntree = 500)
+rforest.praiz = randomForest(X.train, Y.train, xtest = X.test, ytest = Y.test, 
+    mtry = p.raiz, ntree = 500)
+plot(1:500, rforest.p$test$mse, col = "chartreuse1", type = "l", xlab = "NÚMERO DE ARBOLES", 
+    ylab = "MSE DE PRUEBA", ylim = c(10, 18))
+lines(1:500, rforest.p2$test$mse, col = "turquoise1", type = "l")
+lines(1:500, rforest.p3$test$mse, col = "firebrick2", type = "l")
+lines(1:500, rforest.praiz$test$mse, col = "royalblue1", type = "l")
+legend("bottomright", c("m=p", "m=p/2", "m=p/3", "m=raiz(p)"), col = c("chartreuse1", "turquoise1",    "firebrick2", "royalblue1"),cex = 1, lty = 1)
+```
+
+<span class="negrita_verde">Para los valores de mtry se usaron además de p=13, valores recomendables de p, como p/2=6, p/3=4 y raiz(p)=3. En principio, con un solo arbol el MSE es demasiado alto, luego con alrededor de 200 arboles el MSE se estabiliza para todos los diferentes valores de predictores, en particular para p/2, p/3 y raiz(p) el error se estabiliza alrededor de 14, siendo menor siempre para m=p/2=6. Por tanto unos buenos valores para mtry y ntree serian mtry=6 y ntree=200.
+</span>
+
+## <span class="titulo_ejercicio">Ejercicio 8</span> {.letra}
+
+<span class="negrilla subrayar">In the lab, a classification tree was applied to the <span class="naranja">Carseats</span> data set after converting <span class="naranja">Sales</span> into a qualitative response variable. Now we will seek to predict <span class="naranja">Sales</span> using regression trees and related approaches, treating the response as a quantitative variable.</span>
+
+### <span class="negrilla">(a)</span> {.letra}
+<span class="negrilla subrayar">Split the data set into a training set and a test set.</span>
+
+```{r, message=FALSE}
+library(ISLR)
+attach(Carseats)
+set.seed(100)
+train = sample(nrow(Carseats), nrow(Carseats)/2)
+Carseats.train = Carseats[train, ]
+Carseats.test = Carseats[-train, ]
+```
+
+### <span class="negrilla">(b)</span> {.letra}
+<span class="negrilla subrayar">Fit a regression tree to the training set. Plot the tree, and interpret the results. What test MSE do you obtain?</span>
+
+```{r, warning=FALSE, message=FALSE}
+library(tree)
+tree.carseats = tree(Sales ~ ., data = Carseats.train,  split = "deviance")
+summary(tree.carseats)
+#tree.carseats
+```
+
+```{r, warning=FALSE, message=FALSE}
+plot(x = tree.carseats, type = "proportional")
+text(x = tree.carseats, splits = TRUE, pretty = 0,cex = 0.5, col = "forestgreen")
+```
+
+```{r}
+carseats.predict = predict(tree.carseats, newdata = Carseats.test)
+mean((carseats.predict - Carseats.test$Sales)^2)
+```
+
+<span class="negrita_verde"> Analizando la representación del árbol, el predictor más influyente sobre las ventas es el lugar que ocupa el producto en los estantes de las tiendas (ShelveLoc). Este hecho queda reflejado en la primera división del árbol, que separa las posiciones buenas (nodo derecho) de las malas e intermedias (nodo izquierdo).El total de nodos terminales es de 17 y el MSE de error es de alrededor de 5.4 
+</span> 
+
+### <span class="negrilla">(c)</span> {.letra}
+<span class="negrilla subrayar">Use cross-validation in order to determine the optimal level of tree complexity. Does pruning the tree improve the test MSE?</span>
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+cv.carseats = cv.tree(tree.carseats, FUN = prune.tree)
+resultados.cv = data.frame(nro.nodos = cv.carseats$size, desviacion = cv.carseats$dev,
+                            k = cv.carseats$k)
+p1 = ggplot(data = resultados.cv, aes(x = nro.nodos, y = desviacion)) +
+      geom_line() + geom_point() + labs(title = "Error vs tamaño del árbol") + theme_bw() 
+p2 = ggplot(data = resultados.cv, aes(x = k, y = desviacion)) +
+      geom_line() + geom_point() + labs(title = "Error vs parametro K") + theme_bw() 
+ggarrange(p1, p2)
+```
+
+```{r}
+carseats.pruning = prune.tree(tree.carseats, best = 8)
+plot(x = carseats.pruning, type = "proportional")
+text(x = carseats.pruning, splits = TRUE, pretty = 0, cex = 0.8, col = "forestgreen")
+```
+
+```{r}
+carseats.pruning.predict = predict(carseats.pruning, Carseats.test)
+round(mean((Carseats.test$Sales - carseats.pruning.predict)^2),2)
+```
+
+<span class="negrita_verde">Haciendo el analisis tanto del Error vs el numero de nodos terminales como del Error vs el valor de k, se encuentra que el  numero de nodos que minimiza el error es de 8. Efectivamente el error medio de prueba de este nuevo arbol con 8 nodos finales es de 5.33
+</span> 
+
+### <span class="negrilla">(d)</span> {.letra}
+<span class="negrilla subrayar">Use the bagging approach in order to analyze this data. What test MSE do you obtain? Use the importance() function to determine which variables are most important.</span>
+
+```{r, warning=FALSE, message=FALSE}
+library(randomForest)
+library(tidyverse)
+carseats.bagg = randomForest(Sales ~ ., data = Carseats.train, mtry = 10, ntree = 500,importance = T)
+#carseats.bagg
+prediccion = predict(carseats.bagg, newdata = Carseats.test)
+error = round(mean((Carseats.test$Sales - prediccion)^2),2)
+paste("el Error de test (mse) del modelo obtenido por bagging es:", error)
+importancia_pred <- as.data.frame(importance(carseats.bagg, scale = TRUE))
+importancia_pred <- rownames_to_column(importancia_pred, var = "variable")
+p1 <- ggplot(data = importancia_pred, aes(x = reorder(variable, `%IncMSE`), y = `%IncMSE`, fill = `%IncMSE`)) +
+    labs(x = "variable", title = "Reducción de MSE") +
+    geom_col() +
+    coord_flip() +
+    theme_bw() +
+    theme(legend.position = "bottom")
+p2 <- ggplot(data = importancia_pred, aes(x = reorder(variable, IncNodePurity), y = IncNodePurity,
+                                          fill = IncNodePurity)) +
+    labs(x = "variable", title = "Reducción de pureza") +
+    geom_col() +
+    coord_flip() +
+    theme_bw() +
+    theme(legend.position = "bottom")
+ggarrange(p1, p2)
+```
+
+```{r, warning=FALSE, message=FALSE}
+```
+<span class="negrilla">Usando un modelo de Bagging se tiene un MSE de prueba de 3.28.  
+Según las dos graficas de importancia, hay dos variables con un alta importancia sobre el modelo con respecto a las otras, estas dos variables en nivel de importancia son respectivamente **ShelveLoc** y **Price**.
+</span>
+
+### <span class="negrilla">(e)</span> {.letra}
+<span class="negrilla subrayar">Use random forests to analyze this data. What test MSE do you obtain? Use the importance() function to determine which variables aremost important. Describe the effect of m, the number of variables considered at each split, on the error rate obtained.</span>
+
+```{r}
+#Random Forest variando los predictores
+max.predictores = ncol(Carseats)-1
+nro.predictores = rep(NA, max.predictores)
+test.error =  rep(NA, max.predictores)
+for(i in 1:10){
+  carseats.rf = randomForest(Sales ~ ., data = Carseats.train, mtry = i, ntree = 500, importance = T)
+  prediccion = predict(carseats.rf, Carseats.test)
+  nro.predictores[i] = i
+  test.error[i] = round(mean((Carseats.test$Sales - prediccion)^2),2)
+  #error = round(mean((Carseats.test$Sales - prediccion)^2),2)
+  #mensaje = paste("Error de prueba con ", i, " predictores = ", error)
+  #print(mensaje)
+}
+result.modelos = data.frame(nro.predictores, test.error)
+ggplot(data = result.modelos, aes(x = nro.predictores, y = test.error)) +
+  scale_x_continuous(breaks = result.modelos$nro.predictores) +
+  geom_line() + geom_point() + 
+  geom_point(data = result.modelos %>% arrange(test.error) %>% head(1), color = "red") +
+  labs(title = "Evolución del error de predicion de prueba vs mtry",x = "nº predictores empleados", y = "Error de prueba")+   theme_bw()
+```
+
+<span class="negrita_verde">Variando el valor del numero de predictores m desde 1 hasta 10, el error de prueba disminuye significativamente hasta m=5, de ahi en adelante no se presentan grandes disminuciones, tanto así que cada vez que se corre el algoritmo se obtiene un valor diferente de m entre 5 y 9 que minimiza el error, es decir, a veces el minimo es 5, otras es 6, otras 7, otras 8 y otras incluso es 9, esto se explica gracias a que en cada corrida el algorimto usa combinaciones de predictores diferentes.
+Un buen valor para usar en nuestro modelo de Random Forest podria ser entonces m = 6.
+</span> 
+
+```{r}
+carseats.r6 = randomForest(Sales ~ ., data = Carseats.train, mtry = 6, ntree = 500, importance = T)
+prediccion = predict(carseats.r6, Carseats.test)
+error = round(mean((Carseats.test$Sales - prediccion)^2),2)
+paste("Error de prueba con 6 predictores = ", error)
+importancia_pred <- as.data.frame(importance(carseats.r6, scale = TRUE))
+importancia_pred <- rownames_to_column(importancia_pred, var = "variable")
+p1 <- ggplot(data = importancia_pred, aes(x = reorder(variable, `%IncMSE`), y = `%IncMSE`, fill = `%IncMSE`)) +
+    labs(x = "variable", title = "Reducción de MSE") +
+    geom_col() +
+    coord_flip() +
+    theme_bw() +
+    theme(legend.position = "bottom")
+p2 <- ggplot(data = importancia_pred, aes(x = reorder(variable, IncNodePurity), y = IncNodePurity,
+                                          fill = IncNodePurity)) +
+    labs(x = "variable", title = "Reducción de pureza") +
+    geom_col() +
+    coord_flip() +
+    theme_bw() +
+    theme(legend.position = "bottom")
+ggarrange(p1, p2)
+```
+
+<span class="negrita_verde"> Nuevamente las variables mas importantes en nuestro modelo son **ShelveLoc** y **Price** respectivamente.
+</span>
+
+## <span class="titulo_ejercicio">Ejercicio 9</span> {.letra}
+
+<span class="negrilla subrayar">This problem involves the <span class="naranja">OJ</span> data set which is part of the <span class="naranja">ISLR</span> package.</span>
+
+### <span class="negrilla">(a)</span> {.letra}
+<span class="negrilla subrayar">Create a training set containing a random sample of 800 observations, and a test set containing the remaining observations.</span>
+
+```{r, warning=FALSE}
+library(ISLR)
+library(tree)
+attach(OJ)
+#str(OJ)
+#summary(OJ)
+#rbind(head(OJ,5),tail(OJ,5))
+set.seed(1000)
+train = sample(nrow(OJ), 800)
+OJ.train = OJ[train, ]
+OJ.test = OJ[-train, ]
+```
+
+### <span class="negrilla">(b)</span> {.letra}
+<span class="negrilla subrayar">Fit a tree to the training data, with Purchase as the response and the other variables as predictors. Use the summary() function to produce summary statistics about the tree, and describe the results obtained. What is the training error rate? How many terminal nodes does the tree have?</span>
+
+```{r}
+arbol.oj = tree(Purchase ~ ., data = OJ.train)
+summary(arbol.oj)
+```
+
+<span class="negrita_verde">Se creó un arbol de clasificación con un total de 8 nodos terminales y una tasa de error de clasificación del 16%. Siendo los predictores más importantes la lealtad de marca del consumidor al producto CH **(LoyalCH)**; el precio de venta de MM menos precio de venta de CH **(PriceDiff)** y el precio de venta para MM **(SalePriceMM)**.
+</span> 
+
+### <span class="negrilla">(c)</span> {.letra}
+<span class="negrilla subrayar">Type in the name of the tree object in order to get a detailed text output. Pick one of the terminal nodes, and interpret the information displayed.</span>
+
+```{r}
+#arbol.oj
+```
+
+<span class="negrita_verde">Analizando el nodo numero 25 vemos que allí la variable decisoria es **PriceDiff** que es la diferencia entre el precio de venta del jugo de naranja Minute Maid (MM) y el precio  de venta del jugo de naranja Citrus Hill (CH). En este nodo caen todas las observacions cuyo PriceDiff sea mayor a -0.35 que son en total 104 observaciones. El error de desviacion de todas las observaciones de este nodo es de 126.70 y la prediccion es que el cliente compró Citrus Hill (CH), siendo esta la clase mayoritaria con un total del 70% de las observaciones, mientras que el restante 30% corresponde a la clase Minute Maid (MM).
+</span> 
+
+### <span class="negrilla">(d)</span> {.letra}
+<span class="negrilla subrayar">Create a plot of the tree, and interpret the results.</span>
+
+```{r}
+plot(arbol.oj, type = "proportional")
+text(arbol.oj, splits = TRUE, pretty = 0, cex = 0.8, col = "springgreen4")
+```
+
+<span class="negrita_verde">Se puede ver como la variable que más peso tiene en el árbol de decisión es **LoyalCH**. Ya que esta variable es el decisor de los nodos más internos, incluso da una clara clasificación para valores extremos: Si **LoyalCH < 0.27** la clasificación es indiscutiblemente **MM** y si **LoyalCH > 0.76** entonces la clasificación es **CH**. Para valores de **LoyalCH** entre **[0.27 ; 0.76]** la decisión ya depende también de *SalePriceMM* y de *PriceDiff*.
+</span> 
+
+### <span class="negrilla">(e)</span> {.letra}
+<span class="negrilla subrayar">Predict the response on the test data, and produce a confusion matrix comparing the test labels to the predicted test labels. What is the test error rate?</span>
+
+```{r}
+library("caret")
+predicc.oj = predict(arbol.oj, OJ.test, type = "class")
+confusionMatrix(predicc.oj, OJ.test$Purchase)
+```
+<span class="negrita_verde">Según la matriz de confusión el porcentaje de precisión es del 81.8% por lo que la tasa del error de prueba es del 18.2%
+</span>
+
+### <span class="negrilla">(f)</span> {.letra}
+<span class="negrilla subrayar">Apply the cv.tree() function to the training set in order to determine the optimal tree size.</span>
+
+```{r}
+set.seed(356)
+cv.arbol.oj = cv.tree(arbol.oj, FUN = prune.misclass)
+```
+
+### <span class="negrilla">(g)</span> {.letra}
+<span class="negrilla subrayar">Produce a plot with tree size on the x-axis and cross-validated classification error rate on the y-axis.</span>
+
+```{r}
+plot(cv.arbol.oj$size, cv.arbol.oj$dev, xlab = "Nro de nodos terminales", 
+     ylab = "Error de clasificación", type = "b", pch = 19)
+```
+
+### <span class="negrilla">(h)</span> {.letra}
+<span class="negrilla subrayar">Which tree size corresponds to the lowest cross-validated classification error rate?</span>
+
+<span class="negrita_verde">A partir del grafico se ve que el número de nodos que minimiza el error de clasificación para el árbol es de 6.
+</span>
+
+### <span class="negrilla">(i)</span> {.letra}
+<span class="negrilla subrayar">Produce a pruned tree corresponding to the optimal tree size obtained using cross-validation. If cross-validation does not lead to selection of a pruned tree, then create a pruned tree with five terminal nodes.</span>
+
+```{r}
+arbol.podado.oj = prune.tree(arbol.oj, best = 6)
+plot(arbol.podado.oj, type = "proportional")
+text(arbol.podado.oj, splits = TRUE, pretty = 0, cex = 0.8, col = "springgreen4")
+```
+
+
+### <span class="negrilla">(j)</span> {.letra}
+<span class="negrilla subrayar">Compare the training error rates between the pruned and unpruned trees. Which is higher?</span>
+
+```{r}
+summary(arbol.oj)
+summary(arbol.podado.oj)
+```
+
+<span class="negrita_verde">La tasa de clasificación errónea del árbol podado es un 1% mayor que la del árbol original, la tasa del original es del 16% mientras que la del árbol podado es del 17%. El error de  desviación media también es menor en el árbol original es de 0.7486 mientras que la del árbol podado es de 0.7773.
+</span> 
+
+### <span class="negrilla">(k)</span> {.letra}
+<span class="negrilla subrayar">Compare the test error rates between the pruned and unpruned trees. Which is higher?</span>
+
+```{r}
+predicc.arbol.oj = predict(arbol.oj, newdata = OJ.test, type = "class")
+erroneos.sinpodar = sum(OJ.test$Purchase != predicc.arbol.oj)
+round(erroneos.sinpodar/length(predicc.arbol.oj),2)
+predicc.arbol.podado.oj = predict(arbol.podado.oj, newdata = OJ.test, type = "class")
+erroneos.podado = sum(OJ.test$Purchase != predicc.arbol.podado.oj)
+round(erroneos.podado/length(predicc.arbol.podado.oj),2)
+```
+
+<span class="negrita_verde">La tasa de error de clasificacion del árbol podado (20%) es mayor que la del árbol sin podar (18%)
+</span> 
+
+## <span class="titulo_ejercicio">Ejercicio 10</span> {.letra}
+
+<span class="negrilla subrayar">We now use boosting to predict <span class="naranja">Salary</span> in the <span class="naranja">Hitters</span> data set.</span>
+
+### <span class="negrilla">(a)</span> {.letra}
+Remove the observations for whom the salary information is unknown, and then log-transform the salaries.
+
+```{r, warning=FALSE, message=FALSE}
+library(ISLR)
+sum(is.na(Hitters$Salary))
+```
+
+```{r}
+Hitters = Hitters[-which(is.na(Hitters$Salary)), ]
+sum(is.na(Hitters$Salary))
+```
+
+```{r}
+Hitters$Salary = log(Hitters$Salary)
+```
+
+### <span class="negrilla">(b)</span> {.letra}
+Create a training set consisting of the first 200 observations, and a test set consisting of the remaining observations.
+
+```{r}
+train = 1:200
+Hitters.train = Hitters[train, ]
+Hitters.test = Hitters[-train, ]
+```
+
+### <span class="negrilla">(c)</span> {.letra}
+Perform boosting on the training set with 1,000 trees for a range of values of the shrinkage parameter ?. Produce a plot with different shrinkage values on the x-axis and the corresponding training set MSE on the y-axis.
+
+
+```{r, warning=FALSE, message=FALSE}
+library(gbm)
+```
+
+```{r, warning=FALSE, message=FALSE}
+set.seed(103)
+learning.rate = 10 ^ seq(-10, -0.1, by = 0.1)
+#plot(seq(-10, -0.1, by = 0.1),learning.rate, type = "l")
+learning.rate.length = length(learning.rate)
+train.errors = rep(NA, learning.rate.length)
+test.errors = rep(NA, learning.rate.length)
+for (i in 1:learning.rate.length) {
+    hitters.boosting = gbm(Salary ~ ., data = Hitters.train, distribution = "gaussian", 
+                            n.trees = 1000, shrinkage = learning.rate[i])
+    
+    train.pred = predict(hitters.boosting, Hitters.train, n.trees = 1000)
+    test.pred = predict(hitters.boosting, Hitters.test, n.trees = 1000)
+    
+    train.errors[i] = mean((Hitters.train$Salary - train.pred)^2)
+    test.errors[i] = mean((Hitters.test$Salary - test.pred)^2)
+}
+plot(learning.rate, train.errors, type = "b", xlab = "Tasa de aprendizaje", ylab = "MSE de entrenamiento", 
+    col = "chocolate3", pch = 20)
+```
+
+```{r}
+min(train.errors)
+which.min(train.errors)
+learning.rate[which.min(train.errors)]
+```
+
+### <span class="negrilla">(d)</span> {.letra}
+Produce a plot with different shrinkage values on the x-axis and the corresponding test set MSE on the y-axis.
+
+```{r}
+plot(learning.rate, test.errors, type = "b", xlab = "Tasa de aprendizaje", ylab = "MSE de prueba", 
+    col = "cyan4", pch = 20)
+```
+
+```{r}
+min.test.error = round(min(test.errors),5)
+paste("EL minimo error de prueba es: ", min.test.error)
+min.learning.rate = round(learning.rate[which.min(test.errors)],5)
+paste("La tasa de aprendizaje que da un minimo error de prueba es de :", min.learning.rate)
+```
+
+### <span class="negrilla">(e)</span> {.letra}
+Compare the test MSE of boosting to the test MSE that results from applying two of the regression approaches seen in Chapters 3 and 6.
+
+```{r, warning=FALSE, message=FALSE}
+library(glmnet)
+#Usando regresion lineal multiple
+lm.fit = lm(Salary ~ ., data = Hitters.train)
+lm.pred = predict(lm.fit, Hitters.test)
+mse = round(mean((Hitters.test$Salary - lm.pred)^2),5)
+paste("el MSE usando un modelo de regresion lineal es de: ", mse)
+#Usando Ridge Regression y Lasso
+set.seed(134)
+x = model.matrix(Salary ~ ., data = Hitters.train)
+y = Hitters.train$Salary
+x.test = model.matrix(Salary ~ ., data = Hitters.test)
+#Ridge Regression
+ridge.fit = glmnet(x, y, alpha = 0)
+ridge.pred = predict(ridge.fit, s = 0.01, newx = x.test)
+mse = round(mean((Hitters.test$Salary - ridge.pred)^2),5)
+paste("el MSE usando un modelo Ridge Regression es de: ", mse)
+#Lasso
+lasso.fit = glmnet(x, y, alpha = 1)
+lasso.pred = predict(lasso.fit, s = 0.01, newx = x.test)
+mse = round(mean((Hitters.test$Salary - lasso.pred)^2),5)
+paste("el MSE usando un modelo Lasso es de: ", mse)
+```
+
+<span class="negrita_verde">Se observa como el MSE es mucho mayor para modelos de Regresion Lineal, Ridge Regression y Lasso en comparacion con el modelo de Boosting.
+</span>
+
+### <span class="negrilla">(f)</span> {.letra}
+Which variables appear to be the most important predictors in the boosted model?
+
+```{r}
+mejor.boost = gbm(Salary ~ ., data = Hitters.train, distribution = "gaussian", 
+                  n.trees = 1000, shrinkage = learning.rate[which.min(test.errors)])
+summary(mejor.boost)
+```
+
+<span class="negrita_verde">Las 5 variables de mayor importancia en el modelo son según su importancia: ***CAtBat***, ***CWalks***, ***CHits***, ***PutOuts***, ***Years***.
+</span>
+
+### <span class="negrilla">(g)</span> {.letra}
+Now apply bagging to the training set. What is the test set MSE for this approach?
+
+```{r, warning=FALSE, message=FALSE}
+library(randomForest)
+set.seed(21)
+rf.hitters = randomForest(Salary ~ ., data = Hitters.train, ntree = 500, mtry = 19)
+rf.pred = predict(rf.hitters, Hitters.test)
+error = round(mean((Hitters.test$Salary - rf.pred)^2),5)
+paste("EL MSE de prueba para el modelo bagging es de: ", error)
+```
+
+
+## <span class="titulo_ejercicio">Ejercicio 11</span> {.letra}
+
+This question uses the Caravan data set.
+
+### <span class="negrilla">(a)</span> {.letra}
+Create a training set consisting of the first 1,000 observations, and a test set consisting of the remaining observations.
+
+```{r, warning=FALSE}
+library(ISLR)
+library(gbm)
+library(class)
+#str(Caravan)
+#rbind(head(Caravan,5),tail(Caravan,5))
+train = 1:1000
+Caravan$Purchase = ifelse(Caravan$Purchase == "Yes", 1, 0)
+Caravan.train = Caravan[train, ]
+Caravan.test = Caravan[-train, ]
+```
+
+### <span class="negrilla">(b)</span> {.letra}
+Fit a boosting model to the training set with Purchase as the response and the other variables as predictors. Use 1,000 trees, and a shrinkage value of 0.01. Which predictors appear to be the most important?
+
+
+```{r, warning=FALSE}
+set.seed(400)
+boost.caravan = gbm(Purchase ~ ., data = Caravan.train, n.trees = 1000, shrinkage = 0.01, 
+                    distribution = "bernoulli")
+summary(boost.caravan)
+```
+
+<span class="negrita_verde">Ordenadas segun su importancia las 5 variables mas importantes del modelo son respectivamente: **PPERSAUT**, **MKOOPKLA**, **MBERMIDD**, **MOPLHOOG**, **PBRAND**.
+</span>
+
+### <span class="negrilla">(c)</span> {.letra}
+Use the boosting model to predict the response on the test data. Predict that a person will make a purchase if the estimated probability of purchase is greater than 20 %. Form a confusion matrix. What fraction of the people predicted to make a purchase do in fact make one? How does this compare with the results obtained from applying KNN or logistic regression to this data set?
+
+```{r}
+boost.prob = predict(boost.caravan, Caravan.test, n.trees = 1000, type = "response")
+boost.pred = ifelse(boost.prob > 0.2, 1, 0)
+matrix.conf = table(Caravan.test$Purchase, boost.pred)
+verdadero.compr = round(matrix.conf[2,2]/sum(matrix.conf[,2]),2)
+paste("La fraccion de personas que el modelo predijo como compradores y que efectuaron una compra es de:", verdadero.compr)
+```
+
+```{r, warning=FALSE}
+#Usando Regresión Logistica.
+lm.caravan = glm(Purchase ~ ., data = Caravan.train, family = binomial)
+lm.prob = predict(lm.caravan, Caravan.test, type = "response")
+lm.pred = ifelse(lm.prob > 0.2, 1, 0)
+matrix.conf = table(Valor_real = Caravan.test$Purchase, Prediccion = lm.pred)
+verdadero.compr = round(matrix.conf[2,2]/sum(matrix.conf[,2]),2)
+matrix.conf
+verdadero.compr
+paste("La fraccion usando Regresión Logistica es:", verdadero.compr)
+```
+
+```{r, warning=FALSE}
+#Usando KNN.
+nros.k = 1:10
+v.fracc = rep(NA,length(nros.k))
+for(i in 1:length(nros.k)){
+  Knn.predicc = knn(Caravan.train[,1:85], Caravan.test[,1:85], Caravan.train$Purchase, k = i, prob = TRUE )
+  matrix.conf = table(Caravan.test$Purchase, Knn.predicc)
+  verdadero.compr = round(matrix.conf[2,2]/sum(matrix.conf[,2]),4)
+  v.fracc[i] = verdadero.compr
+  Knn.predicc = NULL
+}
+paste("K =", nros.k, "fr =", v.fracc)
+```
+
+<span class="negrita_verde">Tanto para la regresión logistica como para KNN con diferentes valores para K la proporcion de verdaderos compradores es menor que la que se obtiene usando el metodo de boosting la cual es del **23%**. Aunque con un valor de K = 9 para KNN se acercan bastante.
+</span>
+
+## <span class="titulo_ejercicio">Ejercicio 12</span> {.letra}
+
+Apply boosting, bagging, and random forests to a data set of your choice. Be sure to fit the models on a training set and to evaluate their performance on a test set. How accurate are the results compared to simple methods like linear or logistic regression? Which of these approaches yields the best performance?
+
+<span class="negrita_verde">Para este ejercicio se hará uso del conjunto de datos College de la librería ISLR el cual registra datos en 18 variables de 777 universidades de los estados unidos. La primera de estas variables indica si la universidad es privada o no es privada. Se crearán entonces diferentes modelos de clasificación que permitirán predecir si una universidad es privada o no en función de las otras 17 variables y se evaluarán los rendimientos de estos modelos.
+</span>
+
+```{r, warning=FALSE}
+library(ISLR)
+library(gbm)
+library(randomForest)
+library(tidyverse)
+#summary(College)
+#str(OJ)
+set.seed(100)
+train = sample(nrow(College), 0.7* nrow(College))
+train.college = College[train,]
+test.college = College[-train,]
+```
+
+<span class="negrilla">MODELO DE REGRESIÓN LOGISTICA</span>
+
+```{r}
+#Probabilidades <= 0.5 corresponderan a universidades no privadas y > 0.5 a universidades privadas
+glm.fit = glm(Private ~ ., data = train.college, family = "binomial")
+glm.probs = predict(glm.fit, newdata = test.college, type = "response")
+glm.pred = rep("No", length(glm.probs))
+glm.pred[glm.probs > 0.5] = "Yes"
+table(Prediccion = glm.pred, Valor_real = test.college$Private[])
+porc.acierto = round(mean(glm.pred == test.college$Private)*100,2)
+paste("Rendimiento usando Regresion Logistica =", porc.acierto, "%")
+```
+
+<span class="negrilla">MODELO USANDO BOOSTING</span>
+
+```{r}
+#Se crea una nueva variable binaria en función de la variable Private. Para poder usar la distribucion bernoulli en el parametro distribution
+College$Private01 = ifelse(College$Private == "Yes", 1, 0)
+college.boost = gbm(Private01 ~ ., data = College[train,-1], distribution = "bernoulli", n.trees = 5000) 
+college.probs = predict(college.boost, newdata = College[-train,-1], n.trees = 5000)
+college.predic = rep(0, length(college.probs))
+college.predic[college.probs > 0.5] = 1
+table(Prediccion = college.predic, Valor_real = College$Private01[-train])
+porc.acierto = round(mean(college.predic == College$Private01[-train])*100,2)
+paste("Rendimiento usando Bossting =", porc.acierto, "%")
+College = College[,-19]
+```
+
+<span class="negrilla">MODELO USANDO BAGGING</span>
+
+```{r}
+college.bagg = randomForest(Private ~ ., data = train.college, mtry = 17)
+college.bagg.pred = predict(college.bagg, newdata = test.college)
+table(Prediccion = college.bagg.pred, Valor_real = test.college$Private)
+porc.acierto = round(mean(college.bagg.pred == test.college$Private)*100,2)
+paste("Rendimiento usando Bossting =", porc.acierto, "%")
+```
+
+<span class="negrilla">MODELO USANDO RANDOM FOREST</span>
+
+```{r}
+college.rf = randomForest(Private ~ ., data = train.college, mtry = 10)
+college.rf.pred = predict(college.rf, newdata = test.college)
+table(Prediccion = college.rf.pred, test.college$Private)
+porc.acierto = round(mean(college.rf.pred == test.college$Private)*100,2)
+paste("Rendimiento usando Bossting =", porc.acierto, "%")
+```
+
+<span class="negrilla subrayar">Los modelos con rendimiento mas alto fuerón los de <span class="naranga">**Bagging**</span> y <span class="naranga">**RandomForest**</span>. Los dos tienen una precisión mayor que el de la Regresion Logistica y el del metodo de Boosting. 
+</span>
 
 # <span class="titulo_capitulo">Capítulo 9.7</span> {#cap9_7}
 
