@@ -483,6 +483,8 @@ PlotPower = function(x, a) {
 PlotPower(1:10, 3)
 
 ```
+
+
 # <span class="titulo_capitulo">Capítulo 8.4 (Tree-Based Methods)</span> {#cap8_4}
 
 ## <span class="titulo_ejercicio">Ejercicio 7</span> {.letra}
