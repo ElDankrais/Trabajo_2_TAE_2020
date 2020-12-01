@@ -89,7 +89,7 @@ logist.test[logist.probab > 0.5] = "Up"
 matriz.confusion <- table(logist.test, Direction)
 matriz.confusion
 mosaic(matriz.confusion, shade = T, colorize = T, 
-       gp = gpar(fill = matrix(c("yellow", "red", "red", "yellow"), 2, 2)))
+       gp = gpar(fill = matrix(c("2", "4", "4", "2"), 2, 2)))
 ```
 
 Los calculos anteriores mostraron que la precisión de predicciones correctas es del 56.1% ((54 + 557) / (54 + 557 + 48 + 430)). También se logra evidenciar la gran diferencia que se da las semanas en las que el mercado sube y baja (cuando baja, la precisión es solo de 54 / (430 + 54) = 11.2%, mientras que cuando el mercado sube 557 / (557 + 48) = 92.1%).
@@ -1644,7 +1644,7 @@ theme_bw() + theme(legend.position = "top") +
 theme(panel.background = element_rect(fill='gray0', colour='gray0'))
 ```
 
-<span class="negrita">GRÁFICAS CON EL MEJOR MODELO SVM POLINOMIAL</span>
+<span class="negrilla">GRÁFICAS CON EL MEJOR MODELO SVM POLINOMIAL</span>
 
 ```{r, echo=FALSE}
 #mpg y displacement
@@ -1696,7 +1696,7 @@ theme_bw() + theme(legend.position = "top") +
 theme(panel.background = element_rect(fill='gray69', colour='gray69'))
 ```
 
-<span class="negrita">GRÁFICAS CON EL MEJOR MODELO SVM RADIAL</span>
+<span class="negrilla">GRÁFICAS CON EL MEJOR MODELO SVM RADIAL</span>
 
 ```{r, echo=FALSE}
 #mpg y displacement
